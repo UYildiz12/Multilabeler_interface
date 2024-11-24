@@ -6,7 +6,7 @@ import os
 
 class APIService:
     def __init__(self, base_url: str = None):
-        self.base_url = base_url or os.getenv('API_URL', 'http://localhost:5000')
+        self.base_url = base_url or os.getenv('API_URL', 'https://multilabeler-app.herokuapp.com')
         
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 

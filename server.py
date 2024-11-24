@@ -1,3 +1,4 @@
+import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import json
@@ -208,7 +209,21 @@ def upload_progress():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/')
+def home():
+    return jsonify({"status": "healthy"}), 200
 
+@app.route('/health')
+def health():
+    return jsonify({
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat()
+    }), 200
 
+# Add port configuration
+PORT = int(os.environ.get('PORT', 8080))
+HOST = '0.0.0.0'
+
+# Update the run command at the bottom
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host=HOST, port=PORT)
