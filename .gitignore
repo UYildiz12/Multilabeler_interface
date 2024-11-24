@@ -1,0 +1,23 @@
+# Python cache files
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# IDE settings
+.vscode/
+.idea/
+
+# Data files
+data/
+*.npz
+*.npy
+kay_images.npz
+kay_labels.npy
+kay_labels_val.npy
+
+# Progress and export files
+server_progress_backup.json
+labels_export_*.json
+
+# Environment
+.env
