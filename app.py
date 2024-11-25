@@ -46,63 +46,60 @@ class StreamlitImageLabeler:
         self.batch_size = 25
     
     def initialize_session_state(self):
-        # First page - Username input only if not set
-        if 'user_id' not in st.session_state:
-            st.session_state.user_id = None
-
-        if not st.session_state.user_id:
+        # First page - Username input
+        if 'user_id' not in st.session_state or not st.session_state.user_id:
             st.title("Multi-Category Image Labeling Tool")
             username = st.text_input("Enter your name:", key="username_input")
             if st.button("Start Labeling"):
-                if username:
+                if username:  # Only set if user entered something
                     st.session_state.user_id = username
-                    st.experimental_rerun()
+                    st.rerun()  # Rerun with username set
                 else:
                     st.error("Please enter your name to continue")
-            st.stop()
+            st.stop()  # Stop here until username is entered
             return
 
-        # Initialize core session state variables only once
+        # Initialize other session state variables
         if 'active_category' not in st.session_state:
             st.session_state.active_category = None
-            
         if 'labels' not in st.session_state:
-            # Fetch fresh data from server just once
-            all_progress = self.api_service.get_all_progress()
-            st.session_state.labels = {category: [] for category in self.CATEGORIES}
-            
-            # Initialize with default placeholders and overlay server progress
-            for category in self.CATEGORIES:
-                st.session_state.labels[category] = [
-                    {"label": "unlabeled", "confidence": "N/A", "timestamp": None}
-                    for _ in range(len(self.images))
-                ]
-                
-                if category in all_progress:
-                    for index, label_data in all_progress[category].items():
-                        if str(index).isdigit():
-                            idx = int(index)
-                            if idx < len(st.session_state.labels[category]):
-                                st.session_state.labels[category][idx] = label_data
-
-        # Initialize other required state variables only if they don't exist
+            st.session_state.labels = {}
         if 'locked_categories' not in st.session_state:
             st.session_state.locked_categories = {}
-        
-        if 'show_reset_confirm' not in st.session_state:
+        if 'show_reset_confirm' not in st.session_state:  # Add this line
             st.session_state.show_reset_confirm = False
-        
         if 'category_progress' not in st.session_state:
             st.session_state.category_progress = {
                 category: {"last_labeled_index": -1}
                 for category in self.CATEGORIES
             }
-        
+
+        # Initialize or update category indices
         if 'category_indices' not in st.session_state:
             st.session_state.category_indices = {
-                category: self.api_service.get_last_labeled_index(category) + 1
-                for category in self.CATEGORIES
+                category: 0 for category in self.CATEGORIES
             }
+
+        # Initialize labels with server data
+        if 'labels' not in st.session_state:
+            all_progress = self.api_service.get_all_progress()
+            st.session_state.labels = {category: [] for category in self.CATEGORIES}
+            
+            # Initialize with unlabeled placeholders
+            for category in self.CATEGORIES:
+                st.session_state.labels[category] = [
+                    {"label": "unlabeled", "confidence": "N/A", "timestamp": None}
+                    for _ in range(len(self.images))
+                ]
+            
+            # Overlay existing progress
+            for category, labels in all_progress.items():
+                if category in self.CATEGORIES:
+                    for index, label_data in labels.items():
+                        if str(index).isdigit():
+                            idx = int(index)
+                            if idx < len(st.session_state.labels[category]):
+                                st.session_state.labels[category][idx] = label_data
     
     def load_all_progress(self):
         """Load progress for all categories"""
@@ -112,51 +109,69 @@ class StreamlitImageLabeler:
 
     
     def select_category(self, category: str) -> bool:
-        logging.debug(f"Attempting to acquire lock for category {category}")
-        
-        # First try to acquire the lock
-        if not self.api_service.acquire_lock(st.session_state.user_id, category):
-            return False
-                
-        # Get fresh progress from server
-        category_progress = self.api_service.get_progress(category)
-        
-        # Update labels with server data
-        for index, label_data in category_progress.items():
-            if str(index).isdigit():
-                idx = int(index)
-                if idx < len(st.session_state.labels[category]):
-                    st.session_state.labels[category][idx] = label_data
-        
-        # Find the first unlabeled image
-        current_index = 0
-        for idx, label_data in enumerate(st.session_state.labels[category]):
-            if label_data['label'] == 'unlabeled':
-                current_index = idx
-                break
-        else:
-            # If all images are labeled, start from the last image
-            current_index = len(self.images) - 1
-        
-        # Set active category and indices
-        st.session_state.active_category = category
-        st.session_state.current_index = current_index
-        st.session_state.category_indices[category] = current_index
-        
-        # Initialize form state
-        st.session_state.radio_value = self._get_label_options()[0]
-        st.session_state.confidence_value = "medium"
-        
-        return True
+        logging.debug(f"Attempting to acquire lock for category {category} with user_id: {st.session_state.user_id}")
+        # Acquire lock first
+        if self.api_service.acquire_lock(st.session_state.user_id, category):
+            # Set active category in session state
+            st.session_state.active_category = category
+            
+            # Initialize category-specific state with all required fields
+            if category not in st.session_state.labels:
+                st.session_state.labels[category] = [
+                    {
+                        "label": "unlabeled",
+                        "confidence": "medium",  # Default confidence
+                        "timestamp": None
+                    } 
+                    for _ in self.images
+                ]
+            
+            # Initialize indices
+            if 'current_index' not in st.session_state:
+                st.session_state.current_index = 0
+            
+            if 'category_indices' not in st.session_state:
+                st.session_state.category_indices = {}
+            if category not in st.session_state.category_indices:
+                st.session_state.category_indices[category] = 0
+            
+            st.session_state.current_index = st.session_state.category_indices[category]
+            
+            # Initialize form state
+            if 'confidence_value' not in st.session_state:
+                st.session_state.confidence_value = "medium"
+            
+            # Synchronize category labels from the server
+            category_progress = self.api_service.get_progress(category)
+            if category_progress:
+                for index, label_data in category_progress.items():
+                    if str(index).isdigit():
+                        idx = int(index)
+                        if idx < len(self.images):
+                            st.session_state.labels[category][idx] = label_data
+            else:
+                # Initialize labels if none exist
+                st.session_state.labels[category] = [
+                    {"label": "unlabeled", "confidence": "N/A", "timestamp": None}
+                    for _ in range(len(self.images))
+                ]
+
+            # Set current_index to the earliest unlabeled image
+            for idx, label_data in enumerate(st.session_state.labels[category]):
+                if label_data['label'] == 'unlabeled':
+                    st.session_state.current_index = idx
+                    break
+            else:
+                # If all images are labeled, start from the last image
+                st.session_state.current_index = len(self.images) - 1
+
+            return True
+        return False
+
 
     def run(self):
         # Sync progress more frequently
         self.sync_progress()
-        
-        # Only show username input at the very beginning
-        if 'user_id' not in st.session_state or not st.session_state.user_id:
-            self.initialize_session_state()
-            return
         
         st.title("Multi-Category Image Labeling Tool")
         
@@ -180,40 +195,23 @@ class StreamlitImageLabeler:
     
     def render_category_selection(self):
         st.header("Select a Category to Label")
+        
+        # Refresh locked categories status
         st.session_state.locked_categories = self.api_service.get_locked_categories()
 
-        # Get all progress data once to avoid multiple server calls
-        all_progress_data = self.api_service.get_all_progress()
-
         for category in self.CATEGORIES:
-            # Get current progress for this category
-            category_data = all_progress_data.get(category, {})
+            # Fetch progress for the category
+            category_progress = self.api_service.get_progress(category)
             
-            # Count total labeled (excluding 'unlabeled' entries)
-            labeled_count = sum(1 for label_data in category_data.values() 
-                              if isinstance(label_data, dict) and 
-                              label_data.get('label', 'unlabeled') != 'unlabeled')
-            
+            # Calculate progress stats
             total_images = len(self.images)
-            progress_pct = (labeled_count / total_images) * 100 if total_images > 0 else 0
+            labeled_images = sum(1 for data in category_progress.values() if data['label'] != 'unlabeled')
+            progress_pct = (labeled_images / total_images) * 100 if total_images > 0 else 0
 
             # Display progress bar and stats
             st.write(f"**{category}**")
             st.progress(progress_pct / 100)
-            st.write(f"Labeled: {labeled_count}/{total_images} ({progress_pct:.1f}%)")
-            
-            # Show label distribution
-            distribution = {}
-            for label_data in category_data.values():
-                if isinstance(label_data, dict):
-                    label = label_data.get('label')
-                    if label and label != 'unlabeled':
-                        distribution[label] = distribution.get(label, 0) + 1
-            
-            if distribution:
-                st.write("Label Distribution:")
-                for label, count in distribution.items():
-                    st.write(f"- {label}: {count}")
+            st.write(f"Labeled: {labeled_images}/{total_images} ({progress_pct:.1f}%)")
 
             # Check if category is locked
             locked_by = st.session_state.locked_categories.get(category)
@@ -228,6 +226,7 @@ class StreamlitImageLabeler:
             if st.button(f"Label {category}", key=f"select_{category}"):
                 success = self.select_category(category)
                 if success:
+                    st.session_state.active_category = category
                     st.rerun()
 
     
@@ -409,46 +408,60 @@ class StreamlitImageLabeler:
             st.warning("No active category selected")
             return
 
-        # Get stats directly from server
-        stats = self.api_service.get_category_stats(st.session_state.active_category)
-        total_images = len(self.images)
-        total_labeled = stats['total_labeled']
-        completion_percentage = (total_labeled / total_images) * 100 if total_images > 0 else 0
+        # Get current category's labels
+        labels = st.session_state.labels[st.session_state.active_category]
+        
+        # Count labeled images (excluding unlabeled)
+        labeled = sum(1 for l in labels if isinstance(l, dict) and l.get("label") != "unlabeled")
+        total = len(labels)
+        
+        # Calculate completion percentage
+        completion_percentage = (labeled / total) * 100 if total > 0 else 0
 
         # Display metrics
-        st.metric("Total Images", total_images)
-        st.metric("Labeled Images", total_labeled)
+        st.metric("Total Images", total)
+        st.metric("Labeled Images", labeled)
         st.metric("Completion", f"{completion_percentage:.1f}%")
 
-        # Display label distribution
-        if stats['label_distribution']:
-            st.subheader("Label Distribution")
-            st.bar_chart(stats['label_distribution'])
+        # Label distribution
+        label_counts = {}
+        for l in labels:
+            if isinstance(l, dict):
+                label = l.get("label", "unlabeled")
+                label_counts[label] = label_counts.get(label, 0) + 1
+
+        if label_counts:
+            st.bar_chart(label_counts)
 
     def save_label(self, label: str, confidence: str):
-        # Immediate server update
+        # Ensure category exists in progress
+        if st.session_state.active_category not in st.session_state.category_progress:
+            st.session_state.category_progress[st.session_state.active_category] = {
+                "last_labeled_index": -1
+            }
+
         label_data = {
             "label": label,
             "confidence": confidence,
             "timestamp": datetime.now().isoformat()
         }
+        
+        # Update labels and progress
+        st.session_state.labels[st.session_state.active_category][st.session_state.current_index] = label_data
+        st.session_state.category_progress[st.session_state.active_category]["last_labeled_index"] = st.session_state.current_index
 
-        # Update server first
-        success = self.api_service.save_progress(
-            st.session_state.active_category,
-            st.session_state.current_index,
-            label_data
-        )
+        # Add label data to buffer
+        st.session_state.label_buffer.append({
+            'category': st.session_state.active_category,
+            'index': st.session_state.current_index,
+            'label_data': label_data
+        })
 
-        if success:
-            # Update local state only after successful server update
-            st.session_state.labels[st.session_state.active_category][st.session_state.current_index] = label_data
-            
-            # Clear any cached data to force fresh fetch next time
-            if 'cached_progress' in st.session_state:
-                del st.session_state['cached_progress']
+        # If buffer reaches batch size, save progress
+        if len(st.session_state.label_buffer) >= self.batch_size:
+            self.save_progress()
 
-        # Update statistics with fresh data
+        # Update statistics
         self.display_statistics()
 
     def save_progress(self):
@@ -639,10 +652,8 @@ def main():
                 st.error("Failed to load data. Please refresh the page to try again.")
                 return
     
-    # Ensure images are loaded before creating the labeler
+    # Run the labeling tool
     if st.session_state.loading_state == "completed":
-        if 'images' not in st.session_state:
-            st.session_state.images = images  # Assign loaded images to session state
         labeler = StreamlitImageLabeler(st.session_state.images)
         labeler.run()
 
@@ -691,7 +702,7 @@ def release_lock(self, user_id: str, category: str) -> bool:
     try:
         response = requests.post(f"{self.base_url}/release_lock", 
                                json={"user_id": user_id, "category": category})
-        if (response.status_code == 200):
+        if response.status_code == 200:
             # Force immediate sync after release
             self.sync_all_progress()
         return response.status_code == 200
