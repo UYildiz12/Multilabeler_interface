@@ -197,14 +197,12 @@ class StreamlitImageLabeler:
         st.session_state.locked_categories = self.api_service.get_locked_categories()
 
         for category in self.CATEGORIES:
-            # Calculate progress based on actual labeled images
-            labeled_images = 0
-            if category in st.session_state.labels:
-                for label_data in st.session_state.labels[category]:
-                    if isinstance(label_data, dict) and label_data.get('label') != 'unlabeled':
-                        labeled_images += 1
+            # Fetch progress for the category
+            category_progress = self.api_service.get_progress(category)
             
+            # Calculate progress stats
             total_images = len(self.images)
+            labeled_images = sum(1 for data in category_progress.values() if data['label'] != 'unlabeled')
             progress_pct = (labeled_images / total_images) * 100 if total_images > 0 else 0
 
             # Display progress bar and stats
