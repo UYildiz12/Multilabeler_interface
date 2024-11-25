@@ -218,24 +218,26 @@ class StreamlitImageLabeler:
         self.render_navigation()
     
     def render_category_selection(self):
-        # Force refresh of progress data
-        latest_progress = self.api_service.get_all_progress()
-        
         st.header("Select a Category to Label")
         st.session_state.locked_categories = self.api_service.get_locked_categories()
 
         for category in self.CATEGORIES:
-            # Use server data directly instead of local state
-            category_data = latest_progress.get(category, {})
+            # Get stats directly from server
+            stats = self.api_service.get_category_stats(category)
+            total_labeled = stats['total_labeled']
             total_images = len(self.images)
-            labeled_count = sum(1 for _, data in category_data.items() 
-                              if isinstance(data, dict) and data.get('label') != 'unlabeled')
-            progress_pct = (labeled_count / total_images) * 100 if total_images > 0 else 0
+            progress_pct = (total_labeled / total_images) * 100 if total_images > 0 else 0
 
             # Display progress bar and stats
             st.write(f"**{category}**")
             st.progress(progress_pct / 100)
-            st.write(f"Labeled: {labeled_count}/{total_images} ({progress_pct:.1f}%)")
+            st.write(f"Labeled: {total_labeled}/{total_images} ({progress_pct:.1f}%)")
+            
+            # Show label distribution if available
+            if stats['label_distribution']:
+                st.write("Label Distribution:")
+                for label, count in stats['label_distribution'].items():
+                    st.write(f"- {label}: {count}")
 
             # Check if category is locked
             locked_by = st.session_state.locked_categories.get(category)
@@ -432,38 +434,21 @@ class StreamlitImageLabeler:
             st.warning("No active category selected")
             return
 
-        # Get fresh data directly from server
-        latest_progress = self.api_service.get_all_progress()
-        category_data = latest_progress.get(st.session_state.active_category, {})
-        
-        total = len(self.images)
-        
-        # Calculate labeled count from actual data
-        labeled = sum(1 for _, data in category_data.items() 
-                     if isinstance(data, dict) and data.get('label') != 'unlabeled')
-        
-        # Calculate actual completion percentage
-        completion_percentage = (labeled / total) * 100 if total > 0 else 0
+        # Get stats directly from server
+        stats = self.api_service.get_category_stats(st.session_state.active_category)
+        total_images = len(self.images)
+        total_labeled = stats['total_labeled']
+        completion_percentage = (total_labeled / total_images) * 100 if total_images > 0 else 0
 
         # Display metrics
-        st.metric("Total Images", total)
-        st.metric("Labeled Images", labeled)
+        st.metric("Total Images", total_images)
+        st.metric("Labeled Images", total_labeled)
         st.metric("Completion", f"{completion_percentage:.1f}%")
 
-        # Calculate accurate label distribution
-        label_counts = {}
-        for _, data in category_data.items():
-            if isinstance(data, dict):
-                label = data.get('label', 'unlabeled')
-                label_counts[label] = label_counts.get(label, 0) + 1
-        
-        # Add count for unlabeled (total - sum of labeled)
-        total_labeled = sum(label_counts.values())
-        if total > total_labeled:
-            label_counts['unlabeled'] = total - total_labeled
-
-        if label_counts:
-            st.bar_chart(label_counts)
+        # Display label distribution
+        if stats['label_distribution']:
+            st.subheader("Label Distribution")
+            st.bar_chart(stats['label_distribution'])
 
     def save_label(self, label: str, confidence: str):
         # Immediate server update

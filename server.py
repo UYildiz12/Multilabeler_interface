@@ -144,8 +144,29 @@ class ProgressStore:
     def get_last_labeled_index(self, category: str) -> int:
         return self.last_labeled_indices.get(category, -1)
 
+    def get_category_stats(self, category: str) -> Dict[str, Any]:
+        """Get accurate statistics for a category"""
+        try:
+            category_data = self.progress_data.get(category, {})
+            total_labeled = sum(1 for _, data in category_data.items() 
+                              if isinstance(data, dict) and 
+                              str(data.get('label', '')).strip() != '' and 
+                              data.get('label') != 'unlabeled')
+            
+            label_distribution = {}
+            for _, data in category_data.items():
+                if isinstance(data, dict):
+                    label = data.get('label')
+                    if label and label != 'unlabeled':
+                        label_distribution[label] = label_distribution.get(label, 0) + 1
 
-
+            return {
+                'total_labeled': total_labeled,
+                'label_distribution': label_distribution
+            }
+        except Exception as e:
+            logging.error(f"Error getting category stats: {e}")
+            return {'total_labeled': 0, 'label_distribution': {}}
 
 # Initialize stores
 progress_store = ProgressStore()
@@ -255,6 +276,15 @@ def health():
         "status": "healthy",
         "timestamp": datetime.now().isoformat()
     }), 200
+
+@app.route('/get_category_stats', methods=['GET'])
+def get_category_stats():
+    category = request.args.get('category')
+    if not category:
+        return jsonify({"error": "Category parameter required"}), 400
+    
+    stats = progress_store.get_category_stats(category)
+    return jsonify(stats), 200
 
 # Add port configuration
 PORT = int(os.environ.get('PORT', 5000))  # Set default port to 8080
