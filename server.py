@@ -6,6 +6,9 @@ from datetime import datetime, timedelta
 from typing import Dict, Any
 from threading import Lock
 import logging
+import psycopg2
+from psycopg2.extras import Json
+from urllib.parse import urlparse
 
 app = Flask(__name__)
 CORS(app)
@@ -56,17 +59,68 @@ class CategoryLock:
                    for cat, info in self.locks.items()}
 
 class ProgressStore:
-    def __init__(self, backup_file: str = "server_progress_backup.json"):
-        self.backup_file = backup_file
-        self.progress_data: Dict[str, Dict[str, Any]] = self.load_backup()
-        self.last_labeled_indices: Dict[str, int] = self.load_last_labeled_indices()
+    def __init__(self):
+        self.database_url = os.environ.get('DATABASE_URL')
+        if self.database_url and self.database_url.startswith("postgres://"):
+            self.database_url = self.database_url.replace("postgres://", "postgresql://", 1)
+        self.init_db()
+        self.progress_data = self.load_from_db()
+        self.last_labeled_indices = self.load_last_labeled_indices()
 
-    def load_backup(self) -> Dict[str, Dict[str, Any]]:
+    def init_db(self):
+        with self.get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS progress (
+                        category TEXT PRIMARY KEY,
+                        data JSONB
+                    )
+                """)
+                conn.commit()
+
+    def get_db_connection(self):
+        return psycopg2.connect(self.database_url)
+
+    def load_from_db(self) -> Dict[str, Dict[str, Any]]:
         try:
-            with open(self.backup_file, 'r') as f:
-                return json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
+            with self.get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT category, data FROM progress")
+                    results = cur.fetchall()
+                    return {row[0]: row[1] for row in results}
+        except Exception as e:
+            logging.error(f"Database load error: {e}")
             return {}
+
+    def save_to_db(self):
+        try:
+            with self.get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    for category, data in self.progress_data.items():
+                        cur.execute("""
+                            INSERT INTO progress (category, data)
+                            VALUES (%s, %s)
+                            ON CONFLICT (category) 
+                            DO UPDATE SET data = %s
+                        """, (category, Json(data), Json(data)))
+                    conn.commit()
+        except Exception as e:
+            logging.error(f"Database save error: {e}")
+
+    def update(self, category: str, index: str, data: Dict[str, Any]):
+        if category not in self.progress_data:
+            self.progress_data[category] = {}
+        
+        self.progress_data[category][str(index)] = data
+        
+        # Update last labeled index
+        current_index = int(index)
+        self.last_labeled_indices[category] = max(
+            self.last_labeled_indices.get(category, -1),
+            current_index
+        )
+        
+        self.save_to_db()
 
     def load_last_labeled_indices(self) -> Dict[str, int]:
         last_indices = {}
@@ -83,24 +137,6 @@ class ProgressStore:
     def save_backup(self):
         with open(self.backup_file, 'w') as f:
             json.dump(self.progress_data, f, indent=2)
-
-    def update(self, category: str, index: str, data: Dict[str, Any]):
-        if category not in self.progress_data:
-            self.progress_data[category] = {}
-            
-        # Store the label data
-        self.progress_data[category][str(index)] = data
-        
-        # Update last labeled index and count labeled items
-        valid_indices = [i for i, d in self.progress_data[category].items() 
-                        if str(i).isdigit() and d.get("label") != "unlabeled"]
-        
-        self.last_labeled_indices[category] = max(
-            [int(i) for i in valid_indices] + [-1]
-        )
-        
-        self.save_backup()
-
 
     def get_progress(self, category: str) -> Dict[str, Any]:
         return self.progress_data.get(category, {})

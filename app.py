@@ -1,13 +1,13 @@
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import os
 import requests
 from io import BytesIO
 from queue import Queue
-from threading import Thread
+from threading import Thread, Lock
 from typing import Dict, Any, Callable, List
 import time
 from api_service import APIService
@@ -27,6 +27,11 @@ class StreamlitImageLabeler:
     def __init__(self, images):
         self.images = images
         self.api_service = APIService()
+        self.sync_lock = Lock()
+        
+        # Increase sync frequency
+        self.sync_interval = timedelta(seconds=10)
+        self.last_sync = datetime.now()
         
         # Register cleanup handler
         atexit.register(self.cleanup)
@@ -165,11 +170,9 @@ class StreamlitImageLabeler:
 
 
     def run(self):
-        # Check for updates from other users
-        if self.api_service.should_sync():
-            latest_progress = self.api_service.sync_all_progress()
-            self.update_shared_progress(latest_progress)
-            
+        # Sync progress more frequently
+        self.sync_progress()
+        
         st.title("Multi-Category Image Labeling Tool")
         
         # Category selection if none active
@@ -622,6 +625,17 @@ class StreamlitImageLabeler:
                                 st.session_state.labels[category][idx] = label_data
         # Update last sync time
         self.api_service.last_sync_time = datetime.now()
+
+    def should_sync(self) -> bool:
+        return datetime.now() - self.last_sync >= self.sync_interval
+
+    def sync_progress(self):
+        with self.sync_lock:
+            if self.should_sync():
+                latest_progress = self.api_service.sync_all_progress()
+                if latest_progress:
+                    self.update_shared_progress(latest_progress)
+                self.last_sync = datetime.now()
 
 def main():
     if "loading_state" not in st.session_state:

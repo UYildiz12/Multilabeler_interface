@@ -4,12 +4,21 @@ import streamlit as st
 import logging
 import os
 from datetime import datetime, timedelta
+import backoff  # Add this dependency
 
 class APIService:
     def __init__(self, base_url: str = None):
         self.base_url = base_url or os.getenv('API_URL', 'https://multilabeler-interface-d9bb61fef429.herokuapp.com/')
         self.last_sync_time = datetime.now()
-        self.sync_interval = timedelta(seconds=30)  # Sync every 30 seconds
+        self.sync_interval = timedelta(seconds=10)  # Reduced from 30 to 10 seconds
+        self.session = requests.Session()  # Use session for connection pooling
+
+    @backoff.on_exception(backoff.expo, requests.exceptions.RequestException, max_tries=3)
+    def _make_request(self, method: str, endpoint: str, **kwargs) -> requests.Response:
+        url = f"{self.base_url}/{endpoint}"
+        response = self.session.request(method, url, **kwargs)
+        response.raise_for_status()
+        return response
 
     def acquire_lock(self, user_id: str, category: str) -> bool:
         try:
@@ -17,8 +26,9 @@ class APIService:
                 logging.error("Cannot acquire lock: No user ID provided")
                 return False
                 
-            response = requests.post(
-                f"{self.base_url}/acquire_lock", 
+            response = self._make_request(
+                'POST',
+                'acquire_lock',
                 json={"user_id": user_id, "category": category}
             )
             return response.status_code == 200
@@ -29,8 +39,11 @@ class APIService:
     def release_lock(self, user_id: str, category: str) -> bool:
         """Release lock for a category"""
         try:
-            response = requests.post(f"{self.base_url}/release_lock", 
-                                   json={"user_id": user_id, "category": category})
+            response = self._make_request(
+                'POST',
+                'release_lock',
+                json={"user_id": user_id, "category": category}
+            )
             if response.status_code == 200:
                 # Force immediate sync after release
                 self.sync_all_progress()
@@ -42,7 +55,7 @@ class APIService:
     def get_locked_categories(self) -> Dict[str, str]:
         """Get all currently locked categories and their users"""
         try:
-            response = requests.get(f"{self.base_url}/get_locked_categories")
+            response = self._make_request('GET', 'get_locked_categories')
             if response.status_code == 200:
                 return response.json()
             return {}
@@ -57,7 +70,7 @@ class APIService:
                 "index": index,
                 **label_data  
             }
-            response = requests.post(f"{self.base_url}/save_progress", json=payload)
+            response = self._make_request('POST', 'save_progress', json=payload)
             try:
                 response_data = response.json()  # Attempt to parse JSON
                 logging.debug(f"Save Progress Response: {response_data}")
@@ -75,7 +88,7 @@ class APIService:
     def get_all_progress(self) -> Dict[str, Dict[str, Any]]:
         """Fetch all progress from the server."""
         try:
-            response = requests.get(f"{self.base_url}/get_all_progress")
+            response = self._make_request('GET', 'get_all_progress')
             if response.status_code == 200:
                 return response.json()
             return {}
@@ -85,7 +98,7 @@ class APIService:
 
     def get_progress(self, category: str) -> Dict[str, Any]:
         try:
-            response = requests.get(f"{self.base_url}/get_progress", params={"category": category})
+            response = self._make_request('GET', 'get_progress', params={"category": category})
             if response.status_code == 200:
                 return response.json()
             return {}
@@ -97,7 +110,7 @@ class APIService:
     def upload_progress(self, progress_data: Dict[str, Dict[str, Any]]) -> bool:
         """Upload all progress to the server."""
         try:
-            response = requests.post(f"{self.base_url}/upload_progress", json=progress_data)
+            response = self._make_request('POST', 'upload_progress', json=progress_data)
             return response.status_code == 200
         except requests.RequestException as e:
             logging.error(f"Failed to upload progress: {str(e)}")
@@ -105,7 +118,7 @@ class APIService:
 
     def get_last_labeled_index(self, category: str) -> int:
         try:
-            response = requests.get(f"{self.base_url}/get_last_labeled_index", params={"category": category})
+            response = self._make_request('GET', 'get_last_labeled_index', params={"category": category})
             if response.status_code == 200:
                 return response.json().get("last_labeled_index", -1)
             return -1
@@ -121,11 +134,9 @@ class APIService:
     def sync_all_progress(self) -> Dict[str, Dict[str, Any]]:
         """Get all progress from server and update last sync time"""
         try:
-            response = requests.get(f"{self.base_url}/get_all_progress")
-            if response.status_code == 200:
-                self.last_sync_time = datetime.now()
-                return response.json()
-            return {}
+            response = self._make_request('GET', 'get_all_progress')
+            self.last_sync_time = datetime.now()
+            return response.json()
         except requests.RequestException as e:
             logging.error(f"Failed to sync progress: {str(e)}")
             return {}

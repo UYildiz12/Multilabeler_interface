@@ -1,1 +1,1 @@
-web: gunicorn server:app --log-file=-
+echo web: gunicorn server:app > Procfile
