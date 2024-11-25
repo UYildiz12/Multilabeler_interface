@@ -3,10 +3,13 @@ from typing import Dict, Any
 import streamlit as st
 import logging
 import os
+from datetime import datetime, timedelta
 
 class APIService:
     def __init__(self, base_url: str = None):
         self.base_url = base_url or os.getenv('API_URL', 'https://multilabeler-interface-d9bb61fef429.herokuapp.com')
+        self.last_sync_time = datetime.now()
+        self.sync_interval = timedelta(seconds=30)  # Sync every 30 seconds
         
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -144,3 +147,18 @@ class APIService:
         except Exception as e:
             logging.error(f"Failed to sync category progress: {str(e)}")
             return False
+
+    def should_sync(self) -> bool:
+        return datetime.now() - self.last_sync_time > self.sync_interval
+
+    def sync_all_progress(self) -> Dict[str, Dict[str, Any]]:
+        """Fetch latest progress from server and update last sync time"""
+        try:
+            response = requests.get(f"{self.base_url}/get_all_progress")
+            if response.status_code == 200:
+                self.last_sync_time = datetime.now()
+                return response.json()
+            return {}
+        except requests.RequestException as e:
+            logging.error(f"Failed to sync progress: {str(e)}")
+            return {}

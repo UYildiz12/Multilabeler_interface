@@ -136,6 +136,11 @@ class StreamlitImageLabeler:
 
 
     def run(self):
+        # Check for updates from other users
+        if self.api_service.should_sync():
+            latest_progress = self.api_service.sync_all_progress()
+            self.update_shared_progress(latest_progress)
+            
         st.title("Multi-Category Image Labeling Tool")
         
         # Category selection if none active
@@ -558,6 +563,23 @@ class StreamlitImageLabeler:
                 st.session_state.active_category
             )
 
+    def update_shared_progress(self, latest_progress: Dict[str, Dict[str, Any]]):
+        """Update local progress with latest server data"""
+        for category, labels in latest_progress.items():
+            if category in self.CATEGORIES:
+                # Don't update active category to avoid conflicts
+                if category != st.session_state.active_category:
+                    if category not in st.session_state.labels:
+                        st.session_state.labels[category] = [
+                            {"label": "unlabeled", "confidence": "N/A", "timestamp": None}
+                            for _ in range(len(self.images))
+                        ]
+                    for index, label_data in labels.items():
+                        if str(index).isdigit():
+                            idx = int(index)
+                            if idx < len(st.session_state.labels[category]):
+                                st.session_state.labels[category][idx] = label_data
+
 def main():
     if "loading_state" not in st.session_state:
         st.session_state.loading_state = "not_started"
@@ -617,3 +639,16 @@ def sync_progress(self, category: str):
                     
     except Exception as e:
         logging.error(f"Failed to sync progress: {str(e)}")
+
+def release_lock(self, user_id: str, category: str) -> bool:
+    """Release lock and sync progress"""
+    try:
+        response = requests.post(f"{self.base_url}/release_lock", 
+                               json={"user_id": user_id, "category": category})
+        if response.status_code == 200:
+            # Force immediate sync after release
+            self.sync_all_progress()
+        return response.status_code == 200
+    except requests.RequestException as e:
+        st.error(f"Failed to release lock: {str(e)}")
+        return False
