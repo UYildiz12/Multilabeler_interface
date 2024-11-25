@@ -408,14 +408,19 @@ class StreamlitImageLabeler:
             st.warning("No active category selected")
             return
 
-        # Get current category's labels
+        # Calculate statistics once
         labels = st.session_state.labels[st.session_state.active_category]
-        
-        # Count labeled images (excluding unlabeled)
-        labeled = sum(1 for l in labels if isinstance(l, dict) and l.get("label") != "unlabeled")
+        label_counts = {}
+        labeled = 0
         total = len(labels)
-        
-        # Calculate completion percentage
+
+        for label_data in labels:
+            if isinstance(label_data, dict):
+                label = label_data.get("label", "unlabeled")
+                if label != "unlabeled":
+                    labeled += 1
+                label_counts[label] = label_counts.get(label, 0) + 1
+
         completion_percentage = (labeled / total) * 100 if total > 0 else 0
 
         # Display metrics
@@ -423,46 +428,28 @@ class StreamlitImageLabeler:
         st.metric("Labeled Images", labeled)
         st.metric("Completion", f"{completion_percentage:.1f}%")
 
-        # Label distribution
-        label_counts = {}
-        for l in labels:
-            if isinstance(l, dict):
-                label = l.get("label", "unlabeled")
-                label_counts[label] = label_counts.get(label, 0) + 1
-
         if label_counts:
             st.bar_chart(label_counts)
 
     def save_label(self, label: str, confidence: str):
-        # Ensure category exists in progress
-        if st.session_state.active_category not in st.session_state.category_progress:
-            st.session_state.category_progress[st.session_state.active_category] = {
-                "last_labeled_index": -1
-            }
-
         label_data = {
             "label": label,
             "confidence": confidence,
             "timestamp": datetime.now().isoformat()
         }
         
-        # Update labels and progress
+        # Update local state once
         st.session_state.labels[st.session_state.active_category][st.session_state.current_index] = label_data
-        st.session_state.category_progress[st.session_state.active_category]["last_labeled_index"] = st.session_state.current_index
-
-        # Add label data to buffer
+        
+        # Add to buffer and save if batch size reached
         st.session_state.label_buffer.append({
             'category': st.session_state.active_category,
             'index': st.session_state.current_index,
             'label_data': label_data
         })
 
-        # If buffer reaches batch size, save progress
         if len(st.session_state.label_buffer) >= self.batch_size:
             self.save_progress()
-
-        # Update statistics
-        self.display_statistics()
 
     def save_progress(self):
         """Saves accumulated labels to the server and clears the buffer"""
@@ -607,35 +594,28 @@ class StreamlitImageLabeler:
                 st.session_state.active_category
             )
 
-    def update_shared_progress(self, latest_progress: Dict[str, Dict[str, Any]]):
-        """Update local progress with latest server data"""
-        for category, labels in latest_progress.items():
-            if category in self.CATEGORIES:
-                # Don't update active category to avoid conflicts
-                if category != st.session_state.active_category:
-                    if category not in st.session_state.labels:
-                        st.session_state.labels[category] = [
-                            {"label": "unlabeled", "confidence": "N/A", "timestamp": None}
-                            for _ in range(len(self.images))
-                        ]
-                    for index, label_data in labels.items():
-                        if str(index).isdigit():
-                            idx = int(index)
-                            if idx < len(st.session_state.labels[category]):
-                                st.session_state.labels[category][idx] = label_data
-        # Update last sync time
-        self.api_service.last_sync_time = datetime.now()
-
-    def should_sync(self) -> bool:
-        return datetime.now() - self.last_sync >= self.sync_interval
-
     def sync_progress(self):
         with self.sync_lock:
-            if self.should_sync():
-                latest_progress = self.api_service.sync_all_progress()
-                if latest_progress:
-                    self.update_shared_progress(latest_progress)
-                self.last_sync = datetime.now()
+            if datetime.now() - self.last_sync >= self.sync_interval:
+                try:
+                    latest_progress = self.api_service.sync_all_progress()
+                    if latest_progress:
+                        # Only update non-active categories to avoid conflicts
+                        for category, labels in latest_progress.items():
+                            if category in self.CATEGORIES and category != st.session_state.active_category:
+                                if category not in st.session_state.labels:
+                                    st.session_state.labels[category] = [
+                                        {"label": "unlabeled", "confidence": "N/A", "timestamp": None}
+                                        for _ in range(len(self.images))
+                                    ]
+                                for index, label_data in labels.items():
+                                    if str(index).isdigit():
+                                        idx = int(index)
+                                        if idx < len(st.session_state.labels[category]):
+                                            st.session_state.labels[category][idx] = label_data
+                    self.last_sync = datetime.now()
+                except Exception as e:
+                    logging.error(f"Sync error: {str(e)}")
 
 def main():
     if "loading_state" not in st.session_state:
