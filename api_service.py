@@ -12,6 +12,9 @@ class APIService:
         self.last_sync_time = datetime.now()
         self.sync_interval = timedelta(seconds=10)  # Reduced from 30 to 10 seconds
         self.session = requests.Session()  # Use session for connection pooling
+        self.cache_timeout = timedelta(seconds=5)  # Short cache timeout
+        self._progress_cache = {}
+        self._last_cache_update = datetime.min
 
     @backoff.on_exception(backoff.expo, requests.exceptions.RequestException, max_tries=3)
     def _make_request(self, method: str, endpoint: str, **kwargs) -> requests.Response:
@@ -19,6 +22,9 @@ class APIService:
         response = self.session.request(method, url, **kwargs)
         response.raise_for_status()
         return response
+
+    def _is_cache_valid(self) -> bool:
+        return datetime.now() - self._last_cache_update < self.cache_timeout
 
     def acquire_lock(self, user_id: str, category: str) -> bool:
         try:
@@ -71,27 +77,25 @@ class APIService:
                 **label_data  
             }
             response = self._make_request('POST', 'save_progress', json=payload)
-            try:
-                response_data = response.json()  # Attempt to parse JSON
-                logging.debug(f"Save Progress Response: {response_data}")
-            except ValueError:  # Catch non-JSON responses
-                logging.error(f"Non-JSON response received: {response.text}")
-                st.error(f"Unexpected response from server: {response.text}")
-                return False
-            
-            return response.status_code == 200
+            if response.status_code == 200:
+                # Invalidate cache on successful save
+                self._last_cache_update = datetime.min
+                return True
+            return False
         except requests.RequestException as e:
             logging.error(f"Failed to save progress: {str(e)}")
             st.error(f"Failed to save progress: {str(e)}")
             return False
 
     def get_all_progress(self) -> Dict[str, Dict[str, Any]]:
-        """Fetch all progress from the server."""
+        """Fetch all progress with minimal caching"""
         try:
-            response = self._make_request('GET', 'get_all_progress')
-            if response.status_code == 200:
-                return response.json()
-            return {}
+            if not self._is_cache_valid():
+                response = self._make_request('GET', 'get_all_progress')
+                if response.status_code == 200:
+                    self._progress_cache = response.json()
+                    self._last_cache_update = datetime.now()
+            return self._progress_cache
         except requests.RequestException as e:
             logging.error(f"Failed to fetch all progress: {str(e)}")
             return {}

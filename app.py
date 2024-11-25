@@ -63,7 +63,24 @@ class StreamlitImageLabeler:
         if 'active_category' not in st.session_state:
             st.session_state.active_category = None
         if 'labels' not in st.session_state:
-            st.session_state.labels = {}
+            # Fetch fresh data from server
+            all_progress = self.api_service.get_all_progress()
+            st.session_state.labels = {category: [] for category in self.CATEGORIES}
+            
+            # Initialize with default placeholders
+            for category in self.CATEGORIES:
+                st.session_state.labels[category] = [
+                    {"label": "unlabeled", "confidence": "N/A", "timestamp": None}
+                    for _ in range(len(self.images))
+                ]
+                
+                # Overlay server progress
+                if category in all_progress:
+                    for index, label_data in all_progress[category].items():
+                        if str(index).isdigit():
+                            idx = int(index)
+                            if idx < len(st.session_state.labels[category]):
+                                st.session_state.labels[category][idx] = label_data
         if 'locked_categories' not in st.session_state:
             st.session_state.locked_categories = {}
         if 'show_reset_confirm' not in st.session_state:  # Add this line
@@ -201,16 +218,15 @@ class StreamlitImageLabeler:
         self.render_navigation()
     
     def render_category_selection(self):
-        st.header("Select a Category to Label")
+        # Force refresh of progress data
+        latest_progress = self.api_service.get_all_progress()
         
-        # Refresh locked categories status
+        st.header("Select a Category to Label")
         st.session_state.locked_categories = self.api_service.get_locked_categories()
 
         for category in self.CATEGORIES:
-            # Fetch current progress for this category
-            category_data = self.api_service.get_progress(category)
-            
-            # Calculate actual labeled count from the data
+            # Use server data directly instead of local state
+            category_data = latest_progress.get(category, {})
             total_images = len(self.images)
             labeled_count = sum(1 for _, data in category_data.items() 
                               if isinstance(data, dict) and data.get('label') != 'unlabeled')
@@ -416,8 +432,9 @@ class StreamlitImageLabeler:
             st.warning("No active category selected")
             return
 
-        # Get fresh data from server for accurate stats
-        category_data = self.api_service.get_progress(st.session_state.active_category)
+        # Get fresh data directly from server
+        latest_progress = self.api_service.get_all_progress()
+        category_data = latest_progress.get(st.session_state.active_category, {})
         
         total = len(self.images)
         
@@ -449,34 +466,29 @@ class StreamlitImageLabeler:
             st.bar_chart(label_counts)
 
     def save_label(self, label: str, confidence: str):
-        # Ensure category exists in progress
-        if st.session_state.active_category not in st.session_state.category_progress:
-            st.session_state.category_progress[st.session_state.active_category] = {
-                "last_labeled_index": -1
-            }
-
+        # Immediate server update
         label_data = {
             "label": label,
             "confidence": confidence,
             "timestamp": datetime.now().isoformat()
         }
-        
-        # Update labels and progress
-        st.session_state.labels[st.session_state.active_category][st.session_state.current_index] = label_data
-        st.session_state.category_progress[st.session_state.active_category]["last_labeled_index"] = st.session_state.current_index
 
-        # Add label data to buffer
-        st.session_state.label_buffer.append({
-            'category': st.session_state.active_category,
-            'index': st.session_state.current_index,
-            'label_data': label_data
-        })
+        # Update server first
+        success = self.api_service.save_progress(
+            st.session_state.active_category,
+            st.session_state.current_index,
+            label_data
+        )
 
-        # If buffer reaches batch size, save progress
-        if len(st.session_state.label_buffer) >= self.batch_size:
-            self.save_progress()
+        if success:
+            # Update local state only after successful server update
+            st.session_state.labels[st.session_state.active_category][st.session_state.current_index] = label_data
+            
+            # Clear any cached data to force fresh fetch next time
+            if 'cached_progress' in st.session_state:
+                del st.session_state['cached_progress']
 
-        # Update statistics
+        # Update statistics with fresh data
         self.display_statistics()
 
     def save_progress(self):
