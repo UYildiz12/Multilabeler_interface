@@ -47,13 +47,16 @@ class StreamlitImageLabeler:
     
     def initialize_session_state(self):
         # First page - Username input
-        if 'user_id' not in st.session_state or not st.session_state.user_id:
+        if 'user_id' not in st.session_state:
+            st.session_state.user_id = None  # Initialize user_id
+
+        if not st.session_state.user_id:
             st.title("Multi-Category Image Labeling Tool")
             username = st.text_input("Enter your name:", key="username_input")
             if st.button("Start Labeling"):
                 if username:  # Only set if user entered something
                     st.session_state.user_id = username
-                    st.rerun()  # Rerun with username set
+                    st.experimental_rerun()  # Rerun with username set
                 else:
                     st.error("Please enter your name to continue")
             st.stop()  # Stop here until username is entered
@@ -138,15 +141,16 @@ class StreamlitImageLabeler:
         # First try to acquire the lock
         if not self.api_service.acquire_lock(st.session_state.user_id, category):
             return False
-            
+                
         # Get current progress from server
         category_progress = self.api_service.get_progress(category)
         
-        # Initialize category in session state
-        st.session_state.labels[category] = [
-            {"label": "unlabeled", "confidence": "N/A", "timestamp": None}
-            for _ in range(len(self.images))
-        ]
+        # Initialize category in session state if not already
+        if category not in st.session_state.labels:
+            st.session_state.labels[category] = [
+                {"label": "unlabeled", "confidence": "N/A", "timestamp": None}
+                for _ in range(len(self.images))
+            ]
         
         # Update with existing labels from server
         for index, label_data in category_progress.items():
@@ -155,17 +159,20 @@ class StreamlitImageLabeler:
                 if idx < len(self.images):
                     st.session_state.labels[category][idx] = label_data
         
-        # Find the first unlabeled image
-        first_unlabeled = 0
+        # Find the next unlabeled image index
+        current_index = 0
         for idx, label_data in enumerate(st.session_state.labels[category]):
             if label_data['label'] == 'unlabeled':
-                first_unlabeled = idx
+                current_index = idx
                 break
+        else:
+            # If all images are labeled, start from the last image
+            current_index = len(self.images) - 1
         
         # Set the active category and current index
         st.session_state.active_category = category
-        st.session_state.current_index = first_unlabeled
-        st.session_state.category_indices[category] = first_unlabeled
+        st.session_state.current_index = current_index
+        st.session_state.category_indices[category] = current_index
         
         # Initialize form state
         st.session_state.radio_value = self._get_label_options()[0]
@@ -176,6 +183,11 @@ class StreamlitImageLabeler:
     def run(self):
         # Sync progress more frequently
         self.sync_progress()
+        
+        # Only show username input at the very beginning
+        if 'user_id' not in st.session_state or not st.session_state.user_id:
+            self.initialize_session_state()
+            return
         
         st.title("Multi-Category Image Labeling Tool")
         
@@ -658,8 +670,10 @@ def main():
                 st.error("Failed to load data. Please refresh the page to try again.")
                 return
     
-    # Run the labeling tool
+    # Ensure images are loaded before creating the labeler
     if st.session_state.loading_state == "completed":
+        if 'images' not in st.session_state:
+            st.session_state.images = images  # Assign loaded images to session state
         labeler = StreamlitImageLabeler(st.session_state.images)
         labeler.run()
 
@@ -708,7 +722,7 @@ def release_lock(self, user_id: str, category: str) -> bool:
     try:
         response = requests.post(f"{self.base_url}/release_lock", 
                                json={"user_id": user_id, "category": category})
-        if response.status_code == 200:
+        if (response.status_code == 200):
             # Force immediate sync after release
             self.sync_all_progress()
         return response.status_code == 200
