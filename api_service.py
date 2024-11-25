@@ -10,8 +10,10 @@ class APIService:
         self.base_url = base_url or os.getenv('API_URL', 'https://multilabeler-interface-d9bb61fef429.herokuapp.com')
         self.last_sync_time = datetime.now()
         self.sync_interval = timedelta(seconds=30)  # Sync every 30 seconds
-        
-    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+        logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+
+    def should_sync(self) -> bool:
+        return datetime.now() - self.last_sync_time > self.sync_interval
 
     def acquire_lock(self, user_id: str, category: str) -> bool:
         try:
@@ -28,17 +30,19 @@ class APIService:
             logging.error(f"Failed to acquire lock: {str(e)}")
             return False
 
-            
     def release_lock(self, user_id: str, category: str) -> bool:
         """Release lock for a category"""
         try:
             response = requests.post(f"{self.base_url}/release_lock", 
                                    json={"user_id": user_id, "category": category})
+            if response.status_code == 200:
+                # Force immediate sync after release
+                self.sync_all_progress()
             return response.status_code == 200
         except requests.RequestException as e:
             st.error(f"Failed to release lock: {str(e)}")
             return False
-            
+
     def get_locked_categories(self) -> Dict[str, str]:
         """Get all currently locked categories and their users"""
         try:
@@ -49,7 +53,7 @@ class APIService:
         except requests.RequestException as e:
             st.error(f"Failed to get locked categories: {str(e)}")
             return {}
-            
+
     def save_progress(self, category: str, index: int, label_data: Dict[str, Any]) -> bool:
         try:
             payload = {
@@ -71,6 +75,7 @@ class APIService:
             logging.error(f"Failed to save progress: {str(e)}")
             st.error(f"Failed to save progress: {str(e)}")
             return False
+
     def get_all_progress(self) -> Dict[str, Dict[str, Any]]:
         """Fetch all progress from the server."""
         try:
@@ -81,43 +86,18 @@ class APIService:
         except requests.RequestException as e:
             logging.error(f"Failed to fetch all progress: {str(e)}")
             return {}
-    def sync_progress(self, category: str):
-        """Sync progress for a specific category from server"""
-        try:
-            progress = self.get_progress(category)
-            if not progress:
-                return
-                
-            # Update session state with server progress
-            for index, label_data in progress.items():
-                if str(index).isdigit():
-                    idx = int(index)
-                    if idx < len(st.session_state.labels[category]):
-                        st.session_state.labels[category][idx] = label_data
-                        
-        except Exception as e:
-            logging.error(f"Failed to sync progress: {str(e)}")
-    def upload_progress(self, progress_data: Dict[str, Dict[str, Any]]) -> bool:
-        """Upload all progress to the server."""
-        try:
-            response = requests.post(f"{self.base_url}/upload_progress", json=progress_data)
-            return response.status_code == 200
-        except requests.RequestException as e:
-            logging.error(f"Failed to upload progress: {str(e)}")
-            return False
 
-    def get_last_labeled_index(self, category: str) -> int:
+    def sync_all_progress(self) -> Dict[str, Dict[str, Any]]:
+        """Fetch latest progress from server and update last sync time"""
         try:
-            response = requests.get(f"{self.base_url}/get_last_labeled_index", params={"category": category})
+            response = requests.get(f"{self.base_url}/get_all_progress")
             if response.status_code == 200:
-                return response.json().get("last_labeled_index", -1)
-            return -1
+                self.last_sync_time = datetime.now()
+                return response.json()
+            return {}
         except requests.RequestException as e:
-            logging.error(f"Failed to get last labeled index for category {category}: {str(e)}")
-            st.error(f"Failed to get last labeled index for category {category}: {str(e)}")
-            return -1
-
-
+            logging.error(f"Failed to sync progress: {str(e)}")
+            return {}
 
     def get_progress(self, category: str) -> Dict[str, Any]:
         try:
@@ -148,17 +128,22 @@ class APIService:
             logging.error(f"Failed to sync category progress: {str(e)}")
             return False
 
-    def should_sync(self) -> bool:
-        return datetime.now() - self.last_sync_time > self.sync_interval
-
-    def sync_all_progress(self) -> Dict[str, Dict[str, Any]]:
-        """Fetch latest progress from server and update last sync time"""
+    def upload_progress(self, progress_data: Dict[str, Dict[str, Any]]) -> bool:
+        """Upload all progress to the server."""
         try:
-            response = requests.get(f"{self.base_url}/get_all_progress")
-            if response.status_code == 200:
-                self.last_sync_time = datetime.now()
-                return response.json()
-            return {}
+            response = requests.post(f"{self.base_url}/upload_progress", json=progress_data)
+            return response.status_code == 200
         except requests.RequestException as e:
-            logging.error(f"Failed to sync progress: {str(e)}")
-            return {}
+            logging.error(f"Failed to upload progress: {str(e)}")
+            return False
+
+    def get_last_labeled_index(self, category: str) -> int:
+        try:
+            response = requests.get(f"{self.base_url}/get_last_labeled_index", params={"category": category})
+            if response.status_code == 200:
+                return response.json().get("last_labeled_index", -1)
+            return -1
+        except requests.RequestException as e:
+            logging.error(f"Failed to get last labeled index for category {category}: {str(e)}")
+            st.error(f"Failed to get last labeled index for category {category}: {str(e)}")
+            return -1
