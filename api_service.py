@@ -140,3 +140,18 @@ class APIService:
         except requests.RequestException as e:
             logging.error(f"Failed to sync progress: {str(e)}")
             return {}
+
+    def get_category_stats(self, category: str, total_images: int) -> dict:
+        """Get accurate statistics for a category"""
+        try:
+            progress = self.get_progress(category)
+            labeled = sum(1 for _, data in progress.items() 
+                        if isinstance(data, dict) and data.get('label') != 'unlabeled')
+            return {
+                'total': total_images,
+                'labeled': labeled,
+                'completion': (labeled / total_images * 100) if total_images > 0 else 0
+            }
+        except requests.RequestException as e:
+            logging.error(f"Failed to get category stats: {str(e)}")
+            return {'total': 0, 'labeled': 0, 'completion': 0}

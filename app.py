@@ -100,6 +100,13 @@ class StreamlitImageLabeler:
                             idx = int(index)
                             if idx < len(st.session_state.labels[category]):
                                 st.session_state.labels[category][idx] = label_data
+
+        # Update indices based on actual data
+        if 'category_indices' not in st.session_state:
+            st.session_state.category_indices = {}
+            for category in self.CATEGORIES:
+                last_labeled = self.api_service.get_last_labeled_index(category)
+                st.session_state.category_indices[category] = last_labeled + 1
     
     def load_all_progress(self):
         """Load progress for all categories"""
@@ -200,18 +207,19 @@ class StreamlitImageLabeler:
         st.session_state.locked_categories = self.api_service.get_locked_categories()
 
         for category in self.CATEGORIES:
-            # Fetch progress for the category
-            category_progress = self.api_service.get_progress(category)
+            # Fetch current progress for this category
+            category_data = self.api_service.get_progress(category)
             
-            # Calculate progress stats
+            # Calculate actual labeled count from the data
             total_images = len(self.images)
-            labeled_images = sum(1 for data in category_progress.values() if data['label'] != 'unlabeled')
-            progress_pct = (labeled_images / total_images) * 100 if total_images > 0 else 0
+            labeled_count = sum(1 for _, data in category_data.items() 
+                              if isinstance(data, dict) and data.get('label') != 'unlabeled')
+            progress_pct = (labeled_count / total_images) * 100 if total_images > 0 else 0
 
             # Display progress bar and stats
             st.write(f"**{category}**")
             st.progress(progress_pct / 100)
-            st.write(f"Labeled: {labeled_images}/{total_images} ({progress_pct:.1f}%)")
+            st.write(f"Labeled: {labeled_count}/{total_images} ({progress_pct:.1f}%)")
 
             # Check if category is locked
             locked_by = st.session_state.locked_categories.get(category)
@@ -408,14 +416,16 @@ class StreamlitImageLabeler:
             st.warning("No active category selected")
             return
 
-        # Get current category's labels
-        labels = st.session_state.labels[st.session_state.active_category]
+        # Get fresh data from server for accurate stats
+        category_data = self.api_service.get_progress(st.session_state.active_category)
         
-        # Count labeled images (excluding unlabeled)
-        labeled = sum(1 for l in labels if isinstance(l, dict) and l.get("label") != "unlabeled")
-        total = len(labels)
+        total = len(self.images)
         
-        # Calculate completion percentage
+        # Calculate labeled count from actual data
+        labeled = sum(1 for _, data in category_data.items() 
+                     if isinstance(data, dict) and data.get('label') != 'unlabeled')
+        
+        # Calculate actual completion percentage
         completion_percentage = (labeled / total) * 100 if total > 0 else 0
 
         # Display metrics
@@ -423,12 +433,17 @@ class StreamlitImageLabeler:
         st.metric("Labeled Images", labeled)
         st.metric("Completion", f"{completion_percentage:.1f}%")
 
-        # Label distribution
+        # Calculate accurate label distribution
         label_counts = {}
-        for l in labels:
-            if isinstance(l, dict):
-                label = l.get("label", "unlabeled")
+        for _, data in category_data.items():
+            if isinstance(data, dict):
+                label = data.get('label', 'unlabeled')
                 label_counts[label] = label_counts.get(label, 0) + 1
+        
+        # Add count for unlabeled (total - sum of labeled)
+        total_labeled = sum(label_counts.values())
+        if total > total_labeled:
+            label_counts['unlabeled'] = total - total_labeled
 
         if label_counts:
             st.bar_chart(label_counts)
