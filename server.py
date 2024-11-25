@@ -221,7 +221,7 @@ def health():
     }), 200
 
 # Add port configuration
-PORT = int(os.environ.get('PORT', 8080))
+PORT = int(os.environ.get('PORT', 5000))  # Set default port to 8080
 HOST = '0.0.0.0'
 
 # Update the run command at the bottom

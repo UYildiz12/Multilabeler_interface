@@ -7,10 +7,9 @@ from datetime import datetime, timedelta
 
 class APIService:
     def __init__(self, base_url: str = None):
-        self.base_url = base_url or os.getenv('API_URL', 'https://multilabeler-interface-d9bb61fef429.herokuapp.com')
+        self.base_url = base_url or os.getenv('API_URL', 'http://localhost:5000')
         self.last_sync_time = datetime.now()
-        self.sync_interval = timedelta(seconds=30)  # Sync every 30 seconds
-        logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+        self.sync_interval = timedelta(seconds=10)
 
     def should_sync(self) -> bool:
         return datetime.now() - self.last_sync_time > self.sync_interval
