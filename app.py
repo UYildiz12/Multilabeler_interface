@@ -15,6 +15,7 @@ from api_service import APIService
 from dataloader import DataLoader
 import atexit
 import logging
+import uuid
 
 class StreamlitImageLabeler:
     CATEGORIES = [
@@ -27,88 +28,68 @@ class StreamlitImageLabeler:
     def __init__(self, images):
         self.images = images
         self.api_service = APIService()
+        self.submission_queue = BackgroundQueue(process_func=self._process_label_submission)
         
-        # Initialize background queue for label submissions
-        self.submission_queue = BackgroundQueue(
-            process_func=self._process_label_submission
-        )
-        
-        # Register cleanup function
+        # Register cleanup handler
         atexit.register(self.cleanup)
         
         self.initialize_session_state()
     
     def initialize_session_state(self):
-        if 'user_id' not in st.session_state:
-            st.session_state.user_id = st.text_input("Enter Your Name:", key="user_id_input")
-            if not st.session_state.user_id:
-                st.stop()
+        # First page - Username input
+        if 'user_id' not in st.session_state or not st.session_state.user_id:
+            st.title("Multi-Category Image Labeling Tool")
+            username = st.text_input("Enter your name:", key="username_input")
+            if st.button("Start Labeling"):
+                if username:  # Only set if user entered something
+                    st.session_state.user_id = username
+                    st.rerun()  # Rerun with username set
+                else:
+                    st.error("Please enter your name to continue")
+            st.stop()  # Stop here until username is entered
+            return
 
+        # Initialize other session state variables
+        if 'active_category' not in st.session_state:
+            st.session_state.active_category = None
+        if 'labels' not in st.session_state:
+            st.session_state.labels = {}
+        if 'locked_categories' not in st.session_state:
+            st.session_state.locked_categories = {}
+        if 'show_reset_confirm' not in st.session_state:  # Add this line
+            st.session_state.show_reset_confirm = False
         if 'category_progress' not in st.session_state:
-            # Initialize with default values for all categories
             st.session_state.category_progress = {
-                category: {
-                    "last_labeled_index": -1
-                }
+                category: {"last_labeled_index": -1}
                 for category in self.CATEGORIES
             }
-            
-            # Then update with server progress if available
-            all_progress = self.api_service.get_all_progress()
-            for category, labels in all_progress.items():
-                if category in self.CATEGORIES:
-                    st.session_state.category_progress[category] = {
-                        "last_labeled_index": max(
-                            [int(index) for index in labels.keys() if index.isdigit()],
-                            default=-1
-                        )
-                    }
 
+        # Initialize or update category indices
+        if 'category_indices' not in st.session_state:
+            st.session_state.category_indices = {
+                category: 0 for category in self.CATEGORIES
+            }
+
+        # Initialize labels with server data
         if 'labels' not in st.session_state:
             all_progress = self.api_service.get_all_progress()
             st.session_state.labels = {category: [] for category in self.CATEGORIES}
             
-            # First initialize with unlabeled placeholders
+            # Initialize with unlabeled placeholders
             for category in self.CATEGORIES:
                 st.session_state.labels[category] = [
                     {"label": "unlabeled", "confidence": "N/A", "timestamp": None}
-                    for _ in range(len(self.images))  # Use len(self.images) instead of len(all_progress)
+                    for _ in range(len(self.images))
                 ]
             
-            # Then overlay existing progress
+            # Overlay existing progress
             for category, labels in all_progress.items():
-                if category in self.CATEGORIES:  # Only process known categories
+                if category in self.CATEGORIES:
                     for index, label_data in labels.items():
                         if str(index).isdigit():
                             idx = int(index)
                             if idx < len(st.session_state.labels[category]):
                                 st.session_state.labels[category][idx] = label_data
-
-
-        # Get locked categories
-        if 'locked_categories' not in st.session_state:
-            st.session_state.locked_categories = self.api_service.get_locked_categories()
-        
-        # Category selection
-        if 'active_category' not in st.session_state:
-            st.session_state.active_category = None
-        
-        # Initialize current_index
-        if 'current_index' not in st.session_state:
-            st.session_state.current_index = 0
-        
-        # Initialize labels for each category
-        if 'labels' not in st.session_state:
-            st.session_state.labels = {}
-            
-        if 'show_reset_confirm' not in st.session_state:
-            st.session_state.show_reset_confirm = False
-
-        # Add category-specific current indices
-        if 'category_indices' not in st.session_state:
-            st.session_state.category_indices = {
-                category: 0 for category in self.CATEGORIES
-            }
     
     def load_all_progress(self):
         """Load progress for all categories"""
@@ -117,29 +98,39 @@ class StreamlitImageLabeler:
             st.session_state.category_progress[category] = progress
 
     
-    def select_category(self, category: str):
-        if category in st.session_state.locked_categories:
-            locker = st.session_state.locked_categories[category]
-            if locker != st.session_state.user_id:
-                st.error(f"This category is currently being labeled by {locker}")
-                return False
-
-        # Release previous lock if exists
-        if st.session_state.active_category:
-            self.api_service.release_lock(st.session_state.user_id, st.session_state.active_category)
-
-        # Try to acquire lock for the new category
+    def select_category(self, category: str) -> bool:
+        logging.debug(f"Attempting to acquire lock for category {category} with user_id: {st.session_state.user_id}")
+        # Acquire lock first
         if self.api_service.acquire_lock(st.session_state.user_id, category):
+            # Set active category in session state
             st.session_state.active_category = category
-            st.session_state.locked_categories = self.api_service.get_locked_categories()
-
-            # Sync progress from server for this category
-            self.api_service.sync_progress(category)
-
-            # Set the current index from category-specific index
-            st.session_state.current_index = st.session_state.category_indices.get(category, 0)
-
-            st.rerun()
+            
+            # Initialize category-specific state with all required fields
+            if category not in st.session_state.labels:
+                st.session_state.labels[category] = [
+                    {
+                        "label": "unlabeled",
+                        "confidence": "medium",  # Default confidence
+                        "timestamp": None
+                    } 
+                    for _ in self.images
+                ]
+            
+            # Initialize indices
+            if 'current_index' not in st.session_state:
+                st.session_state.current_index = 0
+            
+            if 'category_indices' not in st.session_state:
+                st.session_state.category_indices = {}
+            if category not in st.session_state.category_indices:
+                st.session_state.category_indices[category] = 0
+            
+            st.session_state.current_index = st.session_state.category_indices[category]
+            
+            # Initialize form state
+            if 'confidence_value' not in st.session_state:
+                st.session_state.confidence_value = "medium"
+            
             return True
         return False
 
@@ -167,13 +158,14 @@ class StreamlitImageLabeler:
     
     def render_category_selection(self):
         st.header("Select a Category to Label")
+        
+        # Refresh locked categories status
+        st.session_state.locked_categories = self.api_service.get_locked_categories()
 
         for category in self.CATEGORIES:
-            progress = len([
-            l for l in st.session_state.labels.get(category, [])
-            if isinstance(l, dict) and "label" in l and l["label"] != "unlabeled"
-        ])
-
+            # Calculate progress
+            progress = len([l for l in st.session_state.labels.get(category, []) 
+                           if isinstance(l, dict) and l["label"] != "unlabeled"])
             total = len(self.images)
             progress_pct = (progress / total) * 100 if total > 0 else 0
 
@@ -181,15 +173,21 @@ class StreamlitImageLabeler:
             with col1:
                 st.progress(progress_pct / 100, f"Progress: {progress_pct:.1f}%")
             with col2:
+                # Check if category is locked
                 locked_by = st.session_state.locked_categories.get(category)
                 if locked_by:
                     if locked_by == st.session_state.user_id:
-                        st.info("Currently working")
+                        st.info("Currently labeling")
                     else:
-                        st.warning(f"Locked by {locked_by}")
-                elif st.button(f"Label {category}", key=f"select_{category}"):
-                    if self.select_category(category):
-                        st.rerun()  # Ensure the page is rerun to reflect the new state
+                        st.warning(f"In use by {locked_by}")
+                        continue
+                
+                # Only show button if category is not locked
+                if st.button(f"Label {category}", key=f"select_{category}"):
+                    success = self.select_category(category)
+                    if success:
+                        st.session_state.active_category = category
+                        st.rerun()  # Force complete page rerun
 
     
     def render_sidebar(self):
@@ -197,7 +195,7 @@ class StreamlitImageLabeler:
             st.header(f"Category: {st.session_state.active_category}")
             
             # Switch category button
-            if st.button("Switch Category"):
+            if st.button("End Labeling Session"):
                 self.api_service.release_lock(
                     st.session_state.user_id,
                     st.session_state.active_category
@@ -226,19 +224,26 @@ class StreamlitImageLabeler:
             st.markdown("---")
             
             # Reset button with confirmation
-            if st.button("Reset Category Labels", type="secondary"):
-                st.session_state.show_reset_confirm = True
-            
-            if st.session_state.show_reset_confirm:
+            if 'show_reset_confirm' not in st.session_state:
+                st.session_state.show_reset_confirm = False
+                
+            if not st.session_state.show_reset_confirm:
+                if st.button("Reset Category Labels", type="secondary"):
+                    st.session_state.show_reset_confirm = True
+                    st.rerun()
+            else:
                 st.warning("Are you sure? This cannot be undone!")
                 col1, col2 = st.columns(2)
                 with col1:
                     if st.button("Yes, Reset"):
                         self.reset_labels()
+                        st.session_state.show_reset_confirm = False
+                        st.rerun()
                 with col2:
                     if st.button("Cancel"):
                         st.session_state.show_reset_confirm = False
-
+                        st.rerun()
+            
             st.markdown("---")
         
             # Add view labels button
@@ -498,49 +503,52 @@ class StreamlitImageLabeler:
             st.sidebar.error(f"Error exporting labels: {str(e)}")
 
     def reset_labels(self):
+        logging.debug("Starting reset_labels process")
         if st.session_state.active_category:
+            current_category = st.session_state.active_category
+            logging.debug(f"Resetting category: {current_category}")
+            
             # Create reset data
             reset_data = [
                 {"label": "unlabeled", "confidence": "N/A", "timestamp": datetime.now().isoformat()}
                 for _ in range(len(self.images))
             ]
+            logging.debug(f"Created reset data for {len(reset_data)} images")
             
-            # Update local state
-            st.session_state.labels[st.session_state.active_category] = reset_data
-            st.session_state.category_indices[st.session_state.active_category] = 0
-            st.session_state.current_index = 0
-            
-            # Reset category progress
-            st.session_state.category_progress[st.session_state.active_category] = {
-                "last_labeled_index": -1
-            }
-            
-            # Update server
             try:
-                # Create a dictionary with the reset data
+                # Update server first
                 category_data = {
-                    st.session_state.active_category: {
+                    current_category: {
                         str(i): data for i, data in enumerate(reset_data)
                     }
                 }
+                logging.debug("Attempting to upload reset data to server")
                 
-                # Upload to server
                 if self.api_service.upload_progress(category_data):
-                    st.success("Category labels reset successfully")
-                    # Reset form state
+                    logging.debug("Server update successful, updating local state")
+                    # Reset all state at once
+                    st.session_state.labels[current_category] = reset_data
+                    st.session_state.category_indices[current_category] = 0
+                    st.session_state.current_index = 0
+                    st.session_state.category_progress[current_category] = {"last_labeled_index": -1}
                     st.session_state.radio_value = self._get_label_options()[0]
                     st.session_state.confidence_value = "medium"
-                    # Force statistics update
-                    self.display_statistics()
-                else:
-                    st.error("Failed to reset labels on server")
+                    st.session_state.show_reset_confirm = False
                     
+                    logging.debug("Local state updated, initiating rerun")
+                    st.success("Category reset successful")
+                    time.sleep(0.5)  # Give time for success message to display
+                    st.rerun()
+                else:
+                    logging.error("Failed to update server with reset data")
+                    st.error("Failed to reset labels on server")
+                    st.session_state.show_reset_confirm = False
             except Exception as e:
-                st.error(f"Error resetting labels on server: {str(e)}")
-                
-            # Reset confirmation dialog
-            st.session_state.show_reset_confirm = False
-            st.rerun()
+                logging.error(f"Error in reset_labels: {str(e)}")
+                st.error(f"Error resetting labels: {str(e)}")
+                st.session_state.show_reset_confirm = False
+        else:
+            logging.debug("No active category to reset")
 
     def cleanup(self):
         """Release category lock when the app closes"""

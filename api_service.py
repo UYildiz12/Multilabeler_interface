@@ -6,25 +6,23 @@ import os
 
 class APIService:
     def __init__(self, base_url: str = None):
-        self.base_url = base_url or os.getenv('API_URL', 'https://multilabeler-interface-d9bb61fef429.herokuapp.com')
+        self.base_url = base_url or os.getenv('API_URL', 'http://localhost:8080')
         
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
     def acquire_lock(self, user_id: str, category: str) -> bool:
         try:
-            response = requests.post(f"{self.base_url}/acquire_lock", json={"user_id": user_id, "category": category})
-            try:
-                response_data = response.json()  # Attempt to parse JSON
-                logging.debug(f"Acquire Lock Response: {response_data}")
-            except ValueError:  # Catch non-JSON responses
-                logging.error(f"Non-JSON response received: {response.text}")
-                st.error(f"Unexpected response from server: {response.text}")
+            if not user_id:  # Add validation
+                logging.error("Cannot acquire lock: No user ID provided")
                 return False
-            
+                
+            response = requests.post(
+                f"{self.base_url}/acquire_lock", 
+                json={"user_id": user_id, "category": category}
+            )
             return response.status_code == 200
         except requests.RequestException as e:
             logging.error(f"Failed to acquire lock: {str(e)}")
-            st.error(f"Failed to acquire lock: {str(e)}")
             return False
 
             
