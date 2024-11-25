@@ -14,7 +14,7 @@ class APIService:
         self.session = requests.Session()  # Use session for connection pooling
         self.cache_timeout = timedelta(seconds=5)  # Short cache timeout
         self._progress_cache = {}
-        self._last_cache_update = datetime.min
+        self._last_cache_update = {}  # Track cache per category
 
     @backoff.on_exception(backoff.expo, requests.exceptions.RequestException, max_tries=3)
     def _make_request(self, method: str, endpoint: str, **kwargs) -> requests.Response:
@@ -78,8 +78,11 @@ class APIService:
             }
             response = self._make_request('POST', 'save_progress', json=payload)
             if response.status_code == 200:
-                # Invalidate cache on successful save
-                self._last_cache_update = datetime.min
+                # Invalidate category cache
+                if category in self._last_cache_update:
+                    del self._last_cache_update[category]
+                if category in self._progress_cache:
+                    del self._progress_cache[category]
                 return True
             return False
         except requests.RequestException as e:
@@ -102,9 +105,17 @@ class APIService:
 
     def get_progress(self, category: str) -> Dict[str, Any]:
         try:
+            # Check category-specific cache
+            if (category in self._last_cache_update and 
+                datetime.now() - self._last_cache_update[category] < self.cache_timeout):
+                return self._progress_cache.get(category, {})
+
             response = self._make_request('GET', 'get_progress', params={"category": category})
             if response.status_code == 200:
-                return response.json()
+                data = response.json()
+                self._progress_cache[category] = data
+                self._last_cache_update[category] = datetime.now()
+                return data
             return {}
         except requests.RequestException as e:
             logging.error(f"Failed to get progress: {str(e)}")
