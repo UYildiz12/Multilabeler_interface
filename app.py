@@ -103,6 +103,12 @@ class StreamlitImageLabeler:
             
         if 'show_reset_confirm' not in st.session_state:
             st.session_state.show_reset_confirm = False
+
+        # Add category-specific current indices
+        if 'category_indices' not in st.session_state:
+            st.session_state.category_indices = {
+                category: 0 for category in self.CATEGORIES
+            }
     
     def load_all_progress(self):
         """Load progress for all categories"""
@@ -130,9 +136,8 @@ class StreamlitImageLabeler:
             # Sync progress from server for this category
             self.api_service.sync_progress(category)
 
-            # Set the current index based on the last labeled index
-            last_index = self.api_service.get_last_labeled_index(category)
-            st.session_state.current_index = last_index + 1 if last_index >= 0 else 0
+            # Set the current index from category-specific index
+            st.session_state.current_index = st.session_state.category_indices.get(category, 0)
 
             st.rerun()
             return True
@@ -234,6 +239,21 @@ class StreamlitImageLabeler:
                     if st.button("Cancel"):
                         st.session_state.show_reset_confirm = False
 
+            st.markdown("---")
+        
+            # Add view labels button
+            if st.button("View Current Labels"):
+                # Get current labels for active category
+                if st.session_state.active_category:
+                    current_labels = {
+                        "category": st.session_state.active_category,
+                        "labels": st.session_state.labels[st.session_state.active_category]
+                    }
+                    # Display as JSON
+                    st.json(current_labels)
+                else:
+                    st.warning("No category selected")
+
     def render_image(self):
         st.subheader(f"Image {st.session_state.current_index + 1}/{len(self.images)}")
         
@@ -297,14 +317,17 @@ class StreamlitImageLabeler:
         with form_container:
             with st.form(key=f"label_form_{st.session_state.current_index}"):
                 submitted = st.form_submit_button("Submit Label", type="primary", use_container_width=True)
-                
                 if submitted:
                     self.save_label(st.session_state.radio_value, 
-                                    "N/A" if st.session_state.radio_value == "ambiguous" else st.session_state.confidence_value)
-                    self.next_image()
-                    # Reset the state for the next image
-                    st.session_state.radio_value = "unlabeled"
-                    st.session_state.confidence_value = "N/A"
+                                  "N/A" if st.session_state.radio_value == "ambiguous" else st.session_state.confidence_value)
+                    
+                    # Only advance if not at the end
+                    if st.session_state.current_index < len(self.images) - 1:
+                        st.session_state.current_index += 1
+                        
+                    # Reset form state
+                    st.session_state.radio_value = self._get_label_options()[0]
+                    st.session_state.confidence_value = "medium"
                     st.rerun()
 
     def render_navigation(self):
@@ -352,7 +375,7 @@ class StreamlitImageLabeler:
         labels = st.session_state.labels[st.session_state.active_category]
         
         # Count labeled images (excluding unlabeled)
-        labeled = sum(1 for l in labels if l.get("label") != "unlabeled")
+        labeled = sum(1 for l in labels if isinstance(l, dict) and l.get("label") != "unlabeled")
         total = len(labels)
         
         # Calculate completion percentage
@@ -366,12 +389,12 @@ class StreamlitImageLabeler:
         # Label distribution
         label_counts = {}
         for l in labels:
-            label = l.get("label", "unlabeled")
-            label_counts[label] = label_counts.get(label, 0) + 1
+            if isinstance(l, dict):
+                label = l.get("label", "unlabeled")
+                label_counts[label] = label_counts.get(label, 0) + 1
 
         if label_counts:
             st.bar_chart(label_counts)
-
 
     def save_label(self, label: str, confidence: str):
         # Ensure category exists in progress
@@ -398,9 +421,8 @@ class StreamlitImageLabeler:
                 'label_data': label_data
             })
 
-
-
-
+        # Force statistics update
+        self.display_statistics()
 
     def _process_label_submission(self, task: Dict[str, Any]):
         try:
@@ -416,14 +438,31 @@ class StreamlitImageLabeler:
 
 
     def next_image(self):
-        # Move to the next image in the current category
         if st.session_state.current_index < len(self.images) - 1:
+            # Update both indices
             st.session_state.current_index += 1
+            st.session_state.category_indices[st.session_state.active_category] = st.session_state.current_index
+            
+            # Reset form state for new image
+            st.session_state.radio_value = self._get_label_options()[0]
+            st.session_state.confidence_value = "medium"
+            
+            # Force page rerun to update UI
+            st.rerun()
 
     def previous_image(self):
-        # Move to the previous image in the current category
         if st.session_state.current_index > 0:
+            # Update both indices
             st.session_state.current_index -= 1
+            st.session_state.category_indices[st.session_state.active_category] = st.session_state.current_index
+            
+            # Load existing label for previous image
+            current_label = st.session_state.labels[st.session_state.active_category][st.session_state.current_index]
+            st.session_state.radio_value = current_label.get("label", self._get_label_options()[0])
+            st.session_state.confidence_value = current_label.get("confidence", "medium")
+            
+            # Force page rerun to update UI
+            st.rerun()
 
 
 
@@ -462,12 +501,19 @@ class StreamlitImageLabeler:
         if st.session_state.active_category:
             # Create reset data
             reset_data = [
-                {"label": "unlabeled", "confidence": "N/A", "timestamp": None}
+                {"label": "unlabeled", "confidence": "N/A", "timestamp": datetime.now().isoformat()}
                 for _ in range(len(self.images))
             ]
             
             # Update local state
             st.session_state.labels[st.session_state.active_category] = reset_data
+            st.session_state.category_indices[st.session_state.active_category] = 0
+            st.session_state.current_index = 0
+            
+            # Reset category progress
+            st.session_state.category_progress[st.session_state.active_category] = {
+                "last_labeled_index": -1
+            }
             
             # Update server
             try:
@@ -480,15 +526,19 @@ class StreamlitImageLabeler:
                 
                 # Upload to server
                 if self.api_service.upload_progress(category_data):
-                    st.success("Category labels reset successfully on server")
+                    st.success("Category labels reset successfully")
+                    # Reset form state
+                    st.session_state.radio_value = self._get_label_options()[0]
+                    st.session_state.confidence_value = "medium"
+                    # Force statistics update
+                    self.display_statistics()
                 else:
                     st.error("Failed to reset labels on server")
                     
             except Exception as e:
                 st.error(f"Error resetting labels on server: {str(e)}")
                 
-            # Reset current index and confirmation dialog
-            st.session_state.current_index = 0
+            # Reset confirmation dialog
             st.session_state.show_reset_confirm = False
             st.rerun()
 
