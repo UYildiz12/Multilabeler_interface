@@ -6,23 +6,33 @@ from datetime import datetime
 import psycopg2
 from psycopg2.extras import Json
 from psycopg2 import pool
+import time
+from flask import Flask, request, jsonify
+
+# Initialize Flask app
+app = Flask(__name__)
 
 class ProgressStore:
     def __init__(self):
-        self.database_url = os.environ.get('postgres://udmo7ja1aie1mf:p2ea685957fb88a9561d081dcceb42a8e4469378e158cb2c005d42fda2b45459f@c67okggoj39697.cluster-czrs8kj4isg7.us-east-1.rds.amazonaws.com:5432/d3f0rp0gu9odeo')
-        if not self.database_url:
-            raise ValueError("DATABASE_URL environment variable is not set")
+        # Use environment variable with fallback
+        self.database_url = os.environ.get('DATABASE_URL', 
+            'postgres://udmo7ja1aie1mf:p2ea685957fb88a9561d081dcceb42a8e4469378e158cb2c005d42fda2b45459f@c67okggoj39697.cluster-czrs8kj4isg7.us-east-1.rds.amazonaws.com:5432/d3f0rp0gu9odeo')
             
         if self.database_url.startswith("postgres://"):
             self.database_url = self.database_url.replace("postgres://", "postgresql://", 1)
-            
-        # Add connection pool
+
+        # Configure logging
+        logging.basicConfig(level=logging.INFO)
+        
+        # Initialize connection pool with proper settings for Heroku
         try:
             self.pool = psycopg2.pool.SimpleConnectionPool(
                 minconn=1,
-                maxconn=10,
-                dsn=self.database_url
+                maxconn=20,  # Increased for production
+                dsn=self.database_url,
+                connect_timeout=3  # Add timeout
             )
+            logging.info("Database connection pool initialized successfully")
         except Exception as e:
             logging.error(f"Failed to create connection pool: {e}")
             raise
@@ -201,3 +211,41 @@ class ProgressStore:
         except Exception as e:
             logging.error(f"Error getting category stats: {e}")
             return {'total_labeled': 0, 'label_distribution': {}}
+
+# Add Flask routes
+@app.route('/get_progress', methods=['GET'])
+def get_progress():
+    try:
+        category = request.args.get('category')
+        if not category:
+            return jsonify({"error": "Category parameter is required"}), 400
+            
+        progress = store.get_progress(category)
+        return jsonify(progress)
+    except Exception as e:
+        logging.error(f"Error in get_progress: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/save_progress', methods=['POST'])
+def save_progress():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+            
+        category = data.get('category')
+        index = data.get('index')
+        label_data = {k: v for k, v in data.items() if k not in ['category', 'index']}
+        
+        store.update(category, str(index), label_data)
+        return jsonify({"status": "success"})
+    except Exception as e:
+        logging.error(f"Error in save_progress: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# Initialize store
+store = ProgressStore()
+
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host='0.0.0.0', port=port)
