@@ -71,27 +71,17 @@ class ProgressStore:
         """Initialize database tables"""
         with self.get_db_connection() as conn:
             with conn.cursor() as cur:
-                # Modify the table schema to use TEXT for confidence
+                # Create progress table
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS progress (
                         category TEXT NOT NULL,
                         index_id TEXT NOT NULL,
                         label TEXT,
-                        confidence TEXT,  # Changed from FLOAT to TEXT
+                        confidence FLOAT,
                         timestamp TIMESTAMP,
                         PRIMARY KEY (category, index_id)
                     )
                 """)
-                # Try to alter existing table if it exists
-                try:
-                    cur.execute("""
-                        ALTER TABLE progress 
-                        ALTER COLUMN confidence TYPE TEXT
-                        USING confidence::TEXT
-                    """)
-                except Exception as e:
-                    logging.warning(f"Column modification failed (might already be TEXT): {e}")
-                
                 # Create indices for better query performance 
                 cur.execute("""
                     CREATE INDEX IF NOT EXISTS idx_progress_category 
@@ -197,12 +187,11 @@ class ProgressStore:
                 self.return_db_connection(conn)
 
     def update(self, category: str, index: str, data: Dict[str, Any]):
-        """Update progress with confidence as text"""
+        """Update progress with connection pooling and error handling"""
         conn = None
         try:
             conn = self.get_db_connection()
             with conn.cursor() as cur:
-                # No change needed here as the confidence will be stored as TEXT
                 cur.execute("""
                     INSERT INTO progress (category, index_id, label, confidence, timestamp)
                     VALUES (%s, %s, %s, %s, %s)
@@ -215,7 +204,7 @@ class ProgressStore:
                     category,
                     str(index),
                     data.get("label"),
-                    str(data.get("confidence")),  # Ensure confidence is string
+                    data.get("confidence"),
                     datetime.fromisoformat(data.get("timestamp")) if data.get("timestamp") else None
                 ))
                 conn.commit()
