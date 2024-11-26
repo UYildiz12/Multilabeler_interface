@@ -28,7 +28,6 @@ class CategoryLock:
             if category in self.locks:
                 lock_info = self.locks[category]
                 if lock_info['user_id'] != user_id:
-                    logging.warning(f"Lock acquisition failed - category {category} locked by {lock_info['user_id']}")
                     return False
                 
             # Create or update lock
@@ -37,16 +36,13 @@ class CategoryLock:
                 'timestamp': current_time,
                 'expires': current_time + timedelta(minutes=30)  # Lock expires after 30 minutes
             }
-            logging.info(f"Lock acquired for category {category} by user {user_id}")
             return True
             
     def release_lock(self, category: str, user_id: str) -> bool:
         with self.lock:
             if category in self.locks and self.locks[category]['user_id'] == user_id:
                 del self.locks[category]
-                logging.info(f"Lock released for category {category} by user {user_id}")
                 return True
-            logging.warning(f"Lock release failed - category {category} not locked by {user_id}")
             return False
             
     def _cleanup_expired_locks(self):
@@ -393,10 +389,6 @@ def get_category_stats():
 # Add port configuration
 PORT = int(os.environ.get('PORT', 5000))  # Set default port to 8080
 HOST = '0.0.0.0'
-
-# Update the app configuration
-app.config['PROPAGATE_EXCEPTIONS'] = True
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max-limit
 
 # Update the run command at the bottom
 if __name__ == "__main__":
