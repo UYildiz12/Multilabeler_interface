@@ -64,8 +64,12 @@ class ProgressStore:
         if self.database_url and self.database_url.startswith("postgres://"):
             self.database_url = self.database_url.replace("postgres://", "postgresql://", 1)
         self.init_db()
+        logging.debug("=== Initializing ProgressStore ===")
         self.progress_data = self.load_from_db()
+        logging.debug(f"Initial progress data: {json.dumps(self.progress_data, indent=2)}")
+        logging.debug(f"Categories loaded: {list(self.progress_data.keys())}")
         self.last_labeled_indices = self.load_last_labeled_indices()
+        logging.debug(f"Last labeled indices: {self.last_labeled_indices}")
 
     def init_db(self):
         with self.get_db_connection() as conn:
@@ -82,21 +86,33 @@ class ProgressStore:
         return psycopg2.connect(self.database_url)
 
     def load_from_db(self) -> Dict[str, Dict[str, Any]]:
+        logging.debug("\n=== Loading from Database ===")
         try:
             with self.get_db_connection() as conn:
                 with conn.cursor() as cur:
                     cur.execute("SELECT category, data FROM progress")
                     results = cur.fetchall()
-                    return {row[0]: row[1] for row in results}
+                    loaded_data = {row[0]: row[1] for row in results}
+                    logging.debug(f"Loaded categories: {list(loaded_data.keys())}")
+                    for cat, data in loaded_data.items():
+                        logging.debug(f"\nCategory: {cat}")
+                        logging.debug(f"Number of items: {len(data)}")
+                        logging.debug(f"Sample items: {dict(list(data.items())[:2])}")
+                    return loaded_data
         except Exception as e:
-            logging.error(f"Database load error: {e}")
+            logging.error(f"Database load error: {e}", exc_info=True)
             return {}
 
     def save_to_db(self):
+        logging.debug("\n=== Saving to Database ===")
         try:
             with self.get_db_connection() as conn:
                 with conn.cursor() as cur:
                     for category, data in self.progress_data.items():
+                        logging.debug(f"\nCategory: {category}")
+                        logging.debug(f"Data size: {len(data)} items")
+                        logging.debug(f"Sample of data being saved: {dict(list(data.items())[:2])}")
+                        
                         cur.execute("""
                             INSERT INTO progress (category, data)
                             VALUES (%s, %s)
@@ -104,33 +120,42 @@ class ProgressStore:
                             DO UPDATE SET data = %s
                         """, (category, Json(data), Json(data)))
                     conn.commit()
+                    logging.debug("Database commit successful")
         except Exception as e:
-            logging.error(f"Database save error: {e}")
+            logging.error(f"Database save error: {e}", exc_info=True)
+            raise
 
     def update(self, category: str, index: str, data: Dict[str, Any]):
-        logging.debug(f"\n=== Updating progress for category: {category} ===")
+        logging.debug(f"\n=== Updating Progress ===")
+        logging.debug(f"Category: {category}")
         logging.debug(f"Index: {index}")
         logging.debug(f"Data: {json.dumps(data, indent=2)}")
+        logging.debug(f"Previous state for this index: {self.progress_data.get(category, {}).get(index, 'Not found')}")
         
         if category not in self.progress_data:
             logging.debug(f"Creating new category: {category}")
             self.progress_data[category] = {}
         
+        # Store previous state for verification
+        prev_state = self.progress_data[category].copy()
+        
         self.progress_data[category][str(index)] = data
-        logging.debug(f"Updated data at index {index}")
-        logging.debug(f"Current category size: {len(self.progress_data[category])}")
         
-        # Update last labeled index
+        # Verify update
+        logging.debug("\n=== Verifying Update ===")
+        logging.debug(f"Previous category state: {json.dumps(prev_state, indent=2)}")
+        logging.debug(f"New category state: {json.dumps(self.progress_data[category], indent=2)}")
+        logging.debug(f"Verification - data at index {index}: {self.progress_data[category].get(str(index))}")
+        
         try:
-            current_index = int(index)
-            prev_last = self.last_labeled_indices.get(category, -1)
-            self.last_labeled_indices[category] = max(prev_last, current_index)
-            logging.debug(f"Updated last labeled index: {prev_last} -> {self.last_labeled_indices[category]}")
-        except ValueError:
-            logging.error(f"Invalid index format: {index}")
-        
-        self.save_to_db()
-        logging.debug("Progress saved to database")
+            self.save_to_db()
+            logging.debug("Update successfully saved to database")
+        except Exception as e:
+            logging.error(f"Failed to save update: {e}")
+            # Rollback in memory if DB save failed
+            self.progress_data[category] = prev_state
+            logging.debug("Rolled back to previous state due to save failure")
+            raise
 
     def load_last_labeled_indices(self) -> Dict[str, int]:
         last_indices = {}
@@ -149,10 +174,11 @@ class ProgressStore:
             json.dump(self.progress_data, f, indent=2)
 
     def get_progress(self, category: str) -> Dict[str, Any]:
-        logging.debug(f"\n=== Getting progress for category: {category} ===")
+        logging.debug(f"\n=== Getting Progress for {category} ===")
         progress = self.progress_data.get(category, {})
-        logging.debug(f"Progress data size: {len(progress)}")
-        logging.debug(f"Progress keys: {list(progress.keys())[:5]} ...")
+        logging.debug(f"Found {len(progress)} items")
+        logging.debug(f"Keys present: {list(progress.keys())[:5]}")
+        logging.debug(f"Sample data: {dict(list(progress.items())[:2])}")
         return progress
 
     def get_last_labeled_index(self, category: str) -> int:
@@ -214,7 +240,11 @@ category_lock = CategoryLock()
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    datefmt='%Y-%m-%d %H:%M:%S',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler('server_debug.log')
+    ]
 )
 
 @app.route('/acquire_lock', methods=['POST'])
@@ -256,15 +286,24 @@ def get_locked_categories():
 
 @app.route('/save_progress', methods=['POST'])
 def save_progress():
+    logging.debug("\n=== Save Progress Request ===")
     data = request.json
+    logging.debug(f"Received data: {json.dumps(data, indent=2)}")
+    
     if not data:
+        logging.error("No data provided in request")
         return jsonify({"error": "No data provided"}), 400
 
     try:
         required_fields = ['category', 'index', 'label', 'confidence', 'timestamp']
         if not all(field in data for field in required_fields):
+            missing = [f for f in required_fields if f not in data]
+            logging.error(f"Missing required fields: {missing}")
             return jsonify({"error": "Missing required fields"}), 400
 
+        logging.debug("\n=== Before Update ===")
+        logging.debug(f"Current state for category {data['category']}: {progress_store.get_progress(data['category'])}")
+        
         progress_store.update(
             data['category'],
             str(data['index']),
@@ -274,8 +313,13 @@ def save_progress():
                 "timestamp": data["timestamp"]
             }
         )
+        
+        logging.debug("\n=== After Update ===")
+        logging.debug(f"New state for category {data['category']}: {progress_store.get_progress(data['category'])}")
+        
         return jsonify({"message": "Progress saved"}), 200
     except Exception as e:
+        logging.error(f"Error in save_progress: {str(e)}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
 @app.route('/get_progress', methods=['GET'])
