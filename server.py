@@ -148,32 +148,25 @@ class ProgressStore:
         """Get accurate statistics for a category"""
         try:
             category_data = self.progress_data.get(category, {})
+            total_labeled = sum(1 for _, data in category_data.items() 
+                              if isinstance(data, dict) and 
+                              str(data.get('label', '')).strip() != '' and 
+                              data.get('label') != 'unlabeled')
             
-            # Only count valid labels (not empty, not 'unlabeled')
-            labeled_count = 0
             label_distribution = {}
-            
-            for index, data in category_data.items():
-                if not isinstance(data, dict):
-                    continue
-                    
-                label = data.get('label', '')
-                if label and label != 'unlabeled':
-                    labeled_count += 1
-                    label_distribution[label] = label_distribution.get(label, 0) + 1
+            for _, data in category_data.items():
+                if isinstance(data, dict):
+                    label = data.get('label')
+                    if label and label != 'unlabeled':
+                        label_distribution[label] = label_distribution.get(label, 0) + 1
 
             return {
-                'total_labeled': labeled_count,
-                'label_distribution': label_distribution,
-                'total_items': len(category_data)  # Add total items for percentage calculation
+                'total_labeled': total_labeled,
+                'label_distribution': label_distribution
             }
         except Exception as e:
             logging.error(f"Error getting category stats: {e}")
-            return {
-                'total_labeled': 0,
-                'label_distribution': {},
-                'total_items': 0
-            }
+            return {'total_labeled': 0, 'label_distribution': {}}
 
 progress_store = ProgressStore()
 category_lock = CategoryLock()
