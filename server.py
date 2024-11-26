@@ -32,7 +32,7 @@ class ProgressStore:
         # Initialize dictionaries before calling refresh_state
         self.progress_data = {}
         self.last_labeled_indices = {}
-        self.locked_categories = {}
+        self.locked_categories = {}  # Dict to track {category: user_id}
         
         # Initialize database
         self.init_db()
