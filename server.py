@@ -240,10 +240,39 @@ def get_progress():
         if not category:
             return jsonify({"error": "Category parameter is required"}), 400
             
+        # Convert category back from URL-safe format
+        category = category.replace('_', '/')
+            
         progress = store.get_progress(category)
+        if progress is None:
+            return jsonify({}), 200  # Return empty dict if no progress found
+            
         return jsonify(progress)
     except Exception as e:
         logging.error(f"Error in get_progress: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/get_all_progress', methods=['GET'])
+def get_all_progress():
+    try:
+        all_progress = {}
+        categories = set()
+        
+        # Get all categories from existing progress
+        with store.get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT DISTINCT category FROM progress")
+                categories = {row[0] for row in cur.fetchall()}
+                
+        # Get progress for each category
+        for category in categories:
+            progress = store.get_progress(category)
+            if progress:
+                all_progress[category] = progress
+                
+        return jsonify(all_progress)
+    except Exception as e:
+        logging.error(f"Error in get_all_progress: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/save_progress', methods=['POST'])
