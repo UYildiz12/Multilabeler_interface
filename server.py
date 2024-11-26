@@ -188,6 +188,18 @@ class ProgressStore:
 
     def update(self, category: str, index: str, data: Dict[str, Any]):
         """Update progress with connection pooling and error handling"""
+        
+        # Convert text confidence to numerical values if needed
+        confidence = data.get("confidence")
+        if isinstance(confidence, str):
+            confidence_map = {
+                "high": "1.0",
+                "medium": "0.5",
+                "low": "0.1"
+                # Add other mappings as needed
+            }
+            confidence = confidence_map.get(confidence.lower(), confidence)
+        
         conn = None
         try:
             conn = self.get_db_connection()
@@ -204,7 +216,7 @@ class ProgressStore:
                     category,
                     str(index),
                     data.get("label"),
-                    data.get("confidence"),
+                    confidence,
                     datetime.fromisoformat(data.get("timestamp")) if data.get("timestamp") else None
                 ))
                 conn.commit()
