@@ -108,19 +108,29 @@ class ProgressStore:
             logging.error(f"Database save error: {e}")
 
     def update(self, category: str, index: str, data: Dict[str, Any]):
+        logging.debug(f"\n=== Updating progress for category: {category} ===")
+        logging.debug(f"Index: {index}")
+        logging.debug(f"Data: {json.dumps(data, indent=2)}")
+        
         if category not in self.progress_data:
+            logging.debug(f"Creating new category: {category}")
             self.progress_data[category] = {}
         
         self.progress_data[category][str(index)] = data
+        logging.debug(f"Updated data at index {index}")
+        logging.debug(f"Current category size: {len(self.progress_data[category])}")
         
         # Update last labeled index
-        current_index = int(index)
-        self.last_labeled_indices[category] = max(
-            self.last_labeled_indices.get(category, -1),
-            current_index
-        )
+        try:
+            current_index = int(index)
+            prev_last = self.last_labeled_indices.get(category, -1)
+            self.last_labeled_indices[category] = max(prev_last, current_index)
+            logging.debug(f"Updated last labeled index: {prev_last} -> {self.last_labeled_indices[category]}")
+        except ValueError:
+            logging.error(f"Invalid index format: {index}")
         
         self.save_to_db()
+        logging.debug("Progress saved to database")
 
     def load_last_labeled_indices(self) -> Dict[str, int]:
         last_indices = {}
@@ -139,7 +149,11 @@ class ProgressStore:
             json.dump(self.progress_data, f, indent=2)
 
     def get_progress(self, category: str) -> Dict[str, Any]:
-        return self.progress_data.get(category, {})
+        logging.debug(f"\n=== Getting progress for category: {category} ===")
+        progress = self.progress_data.get(category, {})
+        logging.debug(f"Progress data size: {len(progress)}")
+        logging.debug(f"Progress keys: {list(progress.keys())[:5]} ...")
+        return progress
 
     def get_last_labeled_index(self, category: str) -> int:
         return self.last_labeled_indices.get(category, -1)
@@ -147,31 +161,61 @@ class ProgressStore:
     def get_category_stats(self, category: str) -> Dict[str, Any]:
         """Get accurate statistics for a category"""
         try:
+            logging.debug(f"=== Getting stats for category: {category} ===")
             category_data = self.progress_data.get(category, {})
-            total_labeled = sum(1 for _, data in category_data.items() 
-                              if isinstance(data, dict) and 
-                              str(data.get('label', '')).strip() != '' and 
-                              data.get('label') != 'unlabeled')
-            
-            label_distribution = {}
-            for _, data in category_data.items():
-                if isinstance(data, dict):
-                    label = data.get('label')
-                    if label and label != 'unlabeled':
-                        label_distribution[label] = label_distribution.get(label, 0) + 1
+            logging.debug(f"Raw category data length: {len(category_data)}")
+            logging.debug(f"Category data keys: {list(category_data.keys())}")
 
-            return {
+            # Debug print first few items
+            sample_items = dict(list(category_data.items())[:5])
+            logging.debug(f"Sample data items: {json.dumps(sample_items, indent=2)}")
+
+            total_labeled = 0
+            label_distribution = {}
+            
+            logging.debug("Starting label counting...")
+            for idx, data in category_data.items():
+                logging.debug(f"\nProcessing index {idx}:")
+                logging.debug(f"Data type: {type(data)}")
+                logging.debug(f"Data content: {data}")
+                
+                if not isinstance(data, dict):
+                    logging.warning(f"Skipping non-dict data at index {idx}")
+                    continue
+
+                label = data.get('label', '')
+                logging.debug(f"Found label: '{label}'")
+                
+                if label and label != 'unlabeled':
+                    total_labeled += 1
+                    label_distribution[label] = label_distribution.get(label, 0) + 1
+                    logging.debug(f"Valid label found. Running total: {total_labeled}")
+                else:
+                    logging.debug("Skipping empty or unlabeled item")
+
+            logging.debug("\n=== Final Statistics ===")
+            logging.debug(f"Total labeled items: {total_labeled}")
+            logging.debug(f"Label distribution: {label_distribution}")
+            
+            stats = {
                 'total_labeled': total_labeled,
                 'label_distribution': label_distribution
             }
+            logging.debug(f"Returning stats: {json.dumps(stats, indent=2)}")
+            return stats
+
         except Exception as e:
-            logging.error(f"Error getting category stats: {e}")
+            logging.error(f"Error getting category stats: {str(e)}", exc_info=True)
             return {'total_labeled': 0, 'label_distribution': {}}
 
 progress_store = ProgressStore()
 category_lock = CategoryLock()
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 
 @app.route('/acquire_lock', methods=['POST'])
 def acquire_lock():
@@ -279,10 +323,15 @@ def health():
 @app.route('/get_category_stats', methods=['GET'])
 def get_category_stats():
     category = request.args.get('category')
+    logging.debug(f"\n=== Category Stats Request ===")
+    logging.debug(f"Category: {category}")
+    
     if not category:
+        logging.error("Missing category parameter")
         return jsonify({"error": "Category parameter required"}), 400
     
     stats = progress_store.get_category_stats(category)
+    logging.debug(f"Returning stats: {json.dumps(stats, indent=2)}")
     return jsonify(stats), 200
 
 # Add port configuration
