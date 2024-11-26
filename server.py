@@ -43,6 +43,8 @@ class ProgressStore:
         # Load initial state
         self._refresh_state()
         
+        self.locked_categories = {}
+
     def init_db(self):
         """Initialize database tables"""
         with self.get_db_connection() as conn:
@@ -212,6 +214,24 @@ class ProgressStore:
             logging.error(f"Error getting category stats: {e}")
             return {'total_labeled': 0, 'label_distribution': {}}
 
+    def get_locked_categories(self) -> Dict[str, str]:
+        """Return the currently locked categories."""
+        return self.locked_categories
+
+    def acquire_lock(self, user_id: str, category: str) -> bool:
+        """Try to acquire a lock for a category."""
+        if category in self.locked_categories:
+            return False  # Lock already acquired
+        self.locked_categories[category] = user_id
+        return True
+
+    def release_lock(self, user_id: str, category: str) -> bool:
+        """Release the lock for a category."""
+        if self.locked_categories.get(category) == user_id:
+            del self.locked_categories[category]
+            return True
+        return False
+
 # Add Flask routes
 @app.route('/get_progress', methods=['GET'])
 def get_progress():
@@ -242,6 +262,55 @@ def save_progress():
     except Exception as e:
         logging.error(f"Error in save_progress: {e}")
         return jsonify({"error": str(e)}), 500
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    try:
+        # Try to connect to the database
+        with store.get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute('SELECT 1')
+        return jsonify({"status": "healthy"}), 200
+    except Exception as e:
+        logging.error(f"Health check failed: {e}")
+        return jsonify({"status": "unhealthy", "error": str(e)}), 503
+
+# Add a route to handle get_locked_categories
+@app.route('/get_locked_categories', methods=['GET'])
+def get_locked_categories():
+    try:
+        locked_categories = store.get_locked_categories()
+        return jsonify(locked_categories), 200
+    except Exception as e:
+        logging.error(f"Error in get_locked_categories: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# Add routes for acquire_lock and release_lock
+@app.route('/acquire_lock', methods=['POST'])
+def acquire_lock():
+    data = request.get_json()
+    user_id = data.get('user_id')
+    category = data.get('category')
+    if not user_id or not category:
+        return jsonify({"error": "user_id and category are required"}), 400
+    success = store.acquire_lock(user_id, category)
+    if success:
+        return jsonify({"status": "lock acquired"}), 200
+    else:
+        return jsonify({"error": "lock already acquired"}), 409
+
+@app.route('/release_lock', methods=['POST'])
+def release_lock():
+    data = request.get_json()
+    user_id = data.get('user_id')
+    category = data.get('category')
+    if not user_id or not category:
+        return jsonify({"error": "user_id and category are required"}), 400
+    success = store.release_lock(user_id, category)
+    if success:
+        return jsonify({"status": "lock released"}), 200
+    else:
+        return jsonify({"error": "failed to release lock"}), 400
 
 # Initialize store
 store = ProgressStore()
