@@ -28,7 +28,6 @@ class CategoryLock:
             if category in self.locks:
                 lock_info = self.locks[category]
                 if lock_info['user_id'] != user_id:
-                    logging.warning(f"Lock acquisition failed - category {category} locked by {lock_info['user_id']}")
                     return False
                 
             # Create or update lock
@@ -37,16 +36,13 @@ class CategoryLock:
                 'timestamp': current_time,
                 'expires': current_time + timedelta(minutes=30)  # Lock expires after 30 minutes
             }
-            logging.info(f"Lock acquired for category {category} by user {user_id}")
             return True
             
     def release_lock(self, category: str, user_id: str) -> bool:
         with self.lock:
             if category in self.locks and self.locks[category]['user_id'] == user_id:
                 del self.locks[category]
-                logging.info(f"Lock released for category {category} by user {user_id}")
                 return True
-            logging.warning(f"Lock release failed - category {category} not locked by {user_id}")
             return False
             
     def _cleanup_expired_locks(self):
@@ -74,7 +70,6 @@ class ProgressStore:
         logging.debug(f"Categories loaded: {list(self.progress_data.keys())}")
         self.last_labeled_indices = self.load_last_labeled_indices()
         logging.debug(f"Last labeled indices: {self.last_labeled_indices}")
-        self.version_tracking = {}  # Track version for each category
 
     def init_db(self):
         with self.get_db_connection() as conn:
@@ -134,28 +129,32 @@ class ProgressStore:
         logging.debug(f"\n=== Updating Progress ===")
         logging.debug(f"Category: {category}")
         logging.debug(f"Index: {index}")
+        logging.debug(f"Data: {json.dumps(data, indent=2)}")
+        logging.debug(f"Previous state for this index: {self.progress_data.get(category, {}).get(index, 'Not found')}")
         
         if category not in self.progress_data:
+            logging.debug(f"Creating new category: {category}")
             self.progress_data[category] = {}
-            self.version_tracking[category] = 0
-            
-        # Increment version
-        self.version_tracking[category] = self.version_tracking.get(category, 0) + 1
         
-        # Add version to data
-        data['version'] = self.version_tracking[category]
-        data['last_modified'] = datetime.now().isoformat()
+        # Store previous state for verification
+        prev_state = self.progress_data[category].copy()
         
         self.progress_data[category][str(index)] = data
-        logging.debug(f"Updated data with version {data['version']}")
+        
+        # Verify update
+        logging.debug("\n=== Verifying Update ===")
+        logging.debug(f"Previous category state: {json.dumps(prev_state, indent=2)}")
+        logging.debug(f"New category state: {json.dumps(self.progress_data[category], indent=2)}")
+        logging.debug(f"Verification - data at index {index}: {self.progress_data[category].get(str(index))}")
         
         try:
             self.save_to_db()
             logging.debug("Update successfully saved to database")
         except Exception as e:
             logging.error(f"Failed to save update: {e}")
-            # Rollback version on failure
-            self.version_tracking[category] -= 1
+            # Rollback in memory if DB save failed
+            self.progress_data[category] = prev_state
+            logging.debug("Rolled back to previous state due to save failure")
             raise
 
     def load_last_labeled_indices(self) -> Dict[str, int]:
@@ -177,13 +176,10 @@ class ProgressStore:
     def get_progress(self, category: str) -> Dict[str, Any]:
         logging.debug(f"\n=== Getting Progress for {category} ===")
         progress = self.progress_data.get(category, {})
-        version = self.version_tracking.get(category, 0)
-        
-        return {
-            'data': progress,
-            'version': version,
-            'timestamp': datetime.now().isoformat()
-        }
+        logging.debug(f"Found {len(progress)} items")
+        logging.debug(f"Keys present: {list(progress.keys())[:5]}")
+        logging.debug(f"Sample data: {dict(list(progress.items())[:2])}")
+        return progress
 
     def get_last_labeled_index(self, category: str) -> int:
         return self.last_labeled_indices.get(category, -1)
@@ -329,24 +325,16 @@ def save_progress():
 @app.route('/get_progress', methods=['GET'])
 def get_progress():
     category = request.args.get('category')
+    
     if not category:
         return jsonify({"error": "Missing required parameters"}), 400
 
-    response = jsonify(progress_store.get_progress(category))
-    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-    response.headers['Pragma'] = 'no-cache'
-    return response
+    return jsonify(progress_store.get_progress(category)), 200
+
 
 @app.route('/get_all_progress', methods=['GET'])
 def get_all_progress():
-    response = jsonify({
-        'data': progress_store.progress_data,
-        'versions': progress_store.version_tracking,
-        'timestamp': datetime.now().isoformat()
-    })
-    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-    response.headers['Pragma'] = 'no-cache'
-    return response
+    return jsonify(progress_store.progress_data), 200
 
 @app.route('/upload_progress', methods=['POST'])
 def upload_progress():
@@ -393,10 +381,6 @@ def get_category_stats():
 # Add port configuration
 PORT = int(os.environ.get('PORT', 5000))  # Set default port to 8080
 HOST = '0.0.0.0'
-
-# Update the app configuration
-app.config['PROPAGATE_EXCEPTIONS'] = True
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max-limit
 
 # Update the run command at the bottom
 if __name__ == "__main__":
