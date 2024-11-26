@@ -77,7 +77,7 @@ class ProgressStore:
                         category TEXT NOT NULL,
                         index_id TEXT NOT NULL,
                         label TEXT,
-                        confidence FLOAT,
+                        confidence TEXT,
                         timestamp TIMESTAMP,
                         PRIMARY KEY (category, index_id)
                     )
