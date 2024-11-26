@@ -25,17 +25,9 @@ class ProgressStore:
         logging.basicConfig(level=logging.INFO)
         
         # Reduce max connections and add cleanup mechanism
-        try:
-            self.pool = psycopg2.pool.SimpleConnectionPool(
-                minconn=1,
-                maxconn=10,  # Reduced from 20 to 10
-                dsn=self.database_url,
-                connect_timeout=3
-            )
-            logging.info("Database connection pool initialized successfully")
-        except Exception as e:
-            logging.error(f"Failed to create connection pool: {e}")
-            raise
+        self.pool = None  # Initialize as None
+        self._initialize_pool()
+        self.is_shutting_down = False  # Add shutdown flag
             
         # Initialize dictionaries before calling refresh_state
         self.progress_data = {}
@@ -54,6 +46,26 @@ class ProgressStore:
             # Initialize empty state as fallback
             self.progress_data = {}
             self.last_labeled_indices = {}
+
+    def _initialize_pool(self):
+        """Initialize or reinitialize the connection pool"""
+        try:
+            if self.pool:
+                try:
+                    self.pool.closeall()
+                except:
+                    pass
+            
+            self.pool = psycopg2.pool.ThreadedConnectionPool(  # Change to ThreadedConnectionPool
+                minconn=1,
+                maxconn=5,  # Reduced further to prevent connection exhaustion
+                dsn=self.database_url,
+                connect_timeout=3
+            )
+            logging.info("Database connection pool initialized successfully")
+        except Exception as e:
+            logging.error(f"Failed to create connection pool: {e}")
+            raise
 
     def init_db(self):
         """Initialize database tables"""
@@ -78,25 +90,33 @@ class ProgressStore:
                 conn.commit()
 
     def get_db_connection(self):
-        """Get database connection from pool with retry logic"""
+        """Get database connection with better error handling"""
+        if self.is_shutting_down:
+            raise Exception("Service is shutting down")
+            
         max_retries = 3
         retry_count = 0
         last_error = None
         
         while retry_count < max_retries:
             try:
+                if not self.pool or self.pool.closed:
+                    self._initialize_pool()
                 conn = self.pool.getconn()
                 if conn:
+                    if conn.closed:
+                        self.pool.putconn(conn)
+                        raise Exception("Retrieved closed connection")
                     return conn
             except Exception as e:
                 last_error = e
                 retry_count += 1
                 if retry_count < max_retries:
-                    logging.warning(f"Database connection attempt {retry_count} failed, retrying...")
-                    time.sleep(1)  # Wait before retry
-                
-        logging.error(f"Failed to get connection after {max_retries} attempts: {last_error}")
-        raise last_error
+                    time.sleep(1)
+                    logging.warning(f"Retrying database connection ({retry_count}/{max_retries})")
+                else:
+                    logging.error(f"Failed to get connection after {max_retries} attempts: {last_error}")
+                    raise
 
     def return_db_connection(self, conn):
         """Return connection to pool with error handling"""
@@ -264,6 +284,15 @@ class ProgressStore:
             return True
         return False
 
+    def cleanup(self):
+        """Proper cleanup method"""
+        self.is_shutting_down = True
+        if self.pool:
+            try:
+                self.pool.closeall()
+            except:
+                pass
+
 # Add Flask routes
 @app.route('/get_progress', methods=['GET'])
 def get_progress():
@@ -395,9 +424,13 @@ store = ProgressStore()
 
 @app.teardown_appcontext
 def shutdown_session(exception=None):
-    """Ensure connections are returned to pool when Flask context ends"""
-    if hasattr(store, 'pool'):
-        store.pool.closeall()
+    """Only log errors, don't close connections"""
+    if exception:
+        logging.error(f"Error in request: {str(exception)}")
+
+# Add proper shutdown handling
+import atexit
+atexit.register(lambda: store.cleanup() if 'store' in globals() else None)
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 8080))
