@@ -37,13 +37,23 @@ class ProgressStore:
             logging.error(f"Failed to create connection pool: {e}")
             raise
             
+        # Initialize dictionaries before calling refresh_state
+        self.progress_data = {}
+        self.last_labeled_indices = {}
+        self.locked_categories = {}
+        
         # Initialize database
         self.init_db()
         
         # Load initial state
-        self._refresh_state()
-        
-        self.locked_categories = {}
+        try:
+            self._refresh_state()
+            logging.info("Initial state loaded successfully")
+        except Exception as e:
+            logging.error(f"Failed to load initial state: {e}")
+            # Initialize empty state as fallback
+            self.progress_data = {}
+            self.last_labeled_indices = {}
 
     def init_db(self):
         """Initialize database tables"""
@@ -110,7 +120,11 @@ class ProgressStore:
             logging.error(f"Error closing connection pool: {e}")
 
     def _refresh_state(self):
-        """Refresh in-memory state from database with proper connection handling"""
+        """Refresh in-memory state from database with proper error handling"""
+        # Create temporary dictionaries to avoid partial updates
+        temp_progress_data = {}
+        temp_last_labeled_indices = {}
+        
         conn = None
         try:
             conn = self.get_db_connection()
@@ -120,27 +134,31 @@ class ProgressStore:
                     FROM progress
                 """)
                 rows = cur.fetchall()
-                    
+                
                 for row in rows:
                     category, index_id, label, confidence, timestamp = row
+                    
+                    if category not in temp_progress_data:
+                        temp_progress_data[category] = {}
                         
-                    if category not in self.progress_data:
-                        self.progress_data[category] = {}
-                            
-                    self.progress_data[category][index_id] = {
+                    temp_progress_data[category][index_id] = {
                         "label": label,
                         "confidence": confidence,
                         "timestamp": timestamp.isoformat() if timestamp else None
                     }
-                        
+                    
                     # Update last labeled index
                     if label and label != "unlabeled":
                         current_index = int(index_id)
-                        self.last_labeled_indices[category] = max(
-                            self.last_labeled_indices.get(category, -1),
+                        temp_last_labeled_indices[category] = max(
+                            temp_last_labeled_indices.get(category, -1),
                             current_index
                         )
-                            
+                
+                # Only update main dictionaries after successful fetch
+                self.progress_data = temp_progress_data
+                self.last_labeled_indices = temp_last_labeled_indices
+                
         except Exception as e:
             logging.error(f"Error refreshing state from database: {e}")
             raise
