@@ -68,26 +68,43 @@ class ProgressStore:
             raise
 
     def init_db(self):
-        """Initialize database tables"""
+        """Initialize database tables with modified schema"""
         with self.get_db_connection() as conn:
             with conn.cursor() as cur:
-                # Create progress table
+                # First check if we need to modify the confidence column
                 cur.execute("""
-                    CREATE TABLE IF NOT EXISTS progress (
-                        category TEXT NOT NULL,
-                        index_id TEXT NOT NULL,
-                        label TEXT,
-                        confidence TEXT,
-                        timestamp TIMESTAMP,
-                        PRIMARY KEY (category, index_id)
-                    )
+                    SELECT data_type 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'progress' 
+                    AND column_name = 'confidence'
                 """)
-                # Create indices for better query performance 
-                cur.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_progress_category 
-                    ON progress(category)
-                """)
-                conn.commit()
+                result = cur.fetchone()
+                
+                if result and result[0] != 'text':
+                    # If table exists with wrong type, alter it
+                    cur.execute("""
+                        ALTER TABLE progress 
+                        ALTER COLUMN confidence TYPE TEXT
+                    """)
+                    conn.commit()
+                else:
+                    # If table doesn't exist, create it
+                    cur.execute("""
+                        CREATE TABLE IF NOT EXISTS progress (
+                            category TEXT NOT NULL,
+                            index_id TEXT NOT NULL,
+                            label TEXT,
+                            confidence TEXT,
+                            timestamp TIMESTAMP,
+                            PRIMARY KEY (category, index_id)
+                        )
+                    """)
+                    # Create indices for better query performance 
+                    cur.execute("""
+                        CREATE INDEX IF NOT EXISTS idx_progress_category 
+                        ON progress(category)
+                    """)
+                    conn.commit()
 
     def get_db_connection(self):
         """Get database connection with better error handling"""
@@ -186,24 +203,56 @@ class ProgressStore:
             if conn:
                 self.return_db_connection(conn)
 
+    def init_db(self):
+        """Initialize database tables with modified schema"""
+        with self.get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # First check if we need to modify the confidence column
+                cur.execute("""
+                    SELECT data_type 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'progress' 
+                    AND column_name = 'confidence'
+                """)
+                result = cur.fetchone()
+                
+                if result and result[0] != 'text':
+                    # If table exists with wrong type, alter it
+                    cur.execute("""
+                        ALTER TABLE progress 
+                        ALTER COLUMN confidence TYPE TEXT
+                    """)
+                    conn.commit()
+                else:
+                    # If table doesn't exist, create it
+                    cur.execute("""
+                        CREATE TABLE IF NOT EXISTS progress (
+                            category TEXT NOT NULL,
+                            index_id TEXT NOT NULL,
+                            label TEXT,
+                            confidence TEXT,
+                            timestamp TIMESTAMP,
+                            PRIMARY KEY (category, index_id)
+                        )
+                    """)
+                    # Create indices for better query performance 
+                    cur.execute("""
+                        CREATE INDEX IF NOT EXISTS idx_progress_category 
+                        ON progress(category)
+                    """)
+                    conn.commit()
+
     def update(self, category: str, index: str, data: Dict[str, Any]):
         """Update progress with connection pooling and error handling"""
-        
-        # Convert text confidence to numerical values if needed
-        confidence = data.get("confidence")
-        if isinstance(confidence, str):
-            confidence_map = {
-                "high": "1.0",
-                "medium": "0.5",
-                "low": "0.1"
-                # Add other mappings as needed
-            }
-            confidence = confidence_map.get(confidence.lower(), confidence)
-        
         conn = None
         try:
             conn = self.get_db_connection()
             with conn.cursor() as cur:
+                confidence = data.get("confidence")
+                # Ensure confidence is stored as text
+                if confidence is not None:
+                    confidence = str(confidence)
+                
                 cur.execute("""
                     INSERT INTO progress (category, index_id, label, confidence, timestamp)
                     VALUES (%s, %s, %s, %s, %s)
