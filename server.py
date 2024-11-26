@@ -5,12 +5,27 @@ from typing import Dict, Any
 from datetime import datetime
 import psycopg2
 from psycopg2.extras import Json
+from psycopg2 import pool
 
 class ProgressStore:
     def __init__(self):
-        self.database_url = os.environ.get('DATABASE_URL')
-        if self.database_url and self.database_url.startswith("postgres://"):
+        self.database_url = os.environ.get('postgres://udmo7ja1aie1mf:p2ea685957fb88a9561d081dcceb42a8e4469378e158cb2c005d42fda2b45459f@c67okggoj39697.cluster-czrs8kj4isg7.us-east-1.rds.amazonaws.com:5432/d3f0rp0gu9odeo')
+        if not self.database_url:
+            raise ValueError("DATABASE_URL environment variable is not set")
+            
+        if self.database_url.startswith("postgres://"):
             self.database_url = self.database_url.replace("postgres://", "postgresql://", 1)
+            
+        # Add connection pool
+        try:
+            self.pool = psycopg2.pool.SimpleConnectionPool(
+                minconn=1,
+                maxconn=10,
+                dsn=self.database_url
+            )
+        except Exception as e:
+            logging.error(f"Failed to create connection pool: {e}")
+            raise
             
         # Initialize database
         self.init_db()
@@ -41,19 +56,33 @@ class ProgressStore:
                 conn.commit()
 
     def get_db_connection(self):
-        """Get database connection with retry logic"""
+        """Get database connection from pool with retry logic"""
         max_retries = 3
         retry_count = 0
         
         while retry_count < max_retries:
             try:
-                return psycopg2.connect(self.database_url)
+                conn = self.pool.getconn()
+                return conn
             except Exception as e:
                 retry_count += 1
                 if retry_count == max_retries:
-                    logging.error(f"Failed to connect to database after {max_retries} attempts: {e}")
+                    logging.error(f"Failed to get connection after {max_retries} attempts: {e}")
                     raise
                 logging.warning(f"Database connection attempt {retry_count} failed, retrying...")
+                time.sleep(1)  # Add delay between retries
+
+    def return_db_connection(self, conn):
+        """Return connection to pool"""
+        try:
+            self.pool.putconn(conn)
+        except Exception as e:
+            logging.error(f"Error returning connection to pool: {e}")
+
+    def __del__(self):
+        """Clean up connection pool on deletion"""
+        if hasattr(self, 'pool'):
+            self.pool.closeall()
 
     def _refresh_state(self):
         """Refresh in-memory state from database"""
@@ -94,33 +123,39 @@ class ProgressStore:
             raise
 
     def update(self, category: str, index: str, data: Dict[str, Any]):
-        """Update progress with database transaction and state refresh"""
+        """Update progress with connection pooling and error handling"""
+        conn = None
         try:
-            with self.get_db_connection() as conn:
-                with conn.cursor() as cur:
-                    cur.execute("""
-                        INSERT INTO progress (category, index_id, label, confidence, timestamp)
-                        VALUES (%s, %s, %s, %s, %s)
-                        ON CONFLICT (category, index_id) 
-                        DO UPDATE SET 
-                            label = EXCLUDED.label,
-                            confidence = EXCLUDED.confidence,
-                            timestamp = EXCLUDED.timestamp
-                    """, (
-                        category,
-                        str(index),
-                        data.get("label"),
-                        data.get("confidence"),
-                        datetime.fromisoformat(data.get("timestamp")) if data.get("timestamp") else None
-                    ))
-                    conn.commit()
+            conn = self.get_db_connection()
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO progress (category, index_id, label, confidence, timestamp)
+                    VALUES (%s, %s, %s, %s, %s)
+                    ON CONFLICT (category, index_id) 
+                    DO UPDATE SET 
+                        label = EXCLUDED.label,
+                        confidence = EXCLUDED.confidence,
+                        timestamp = EXCLUDED.timestamp
+                """, (
+                    category,
+                    str(index),
+                    data.get("label"),
+                    data.get("confidence"),
+                    datetime.fromisoformat(data.get("timestamp")) if data.get("timestamp") else None
+                ))
+                conn.commit()
                     
             # Refresh state after successful update
             self._refresh_state()
             
         except Exception as e:
+            if conn:
+                conn.rollback()
             logging.error(f"Error updating progress: {e}")
             raise
+        finally:
+            if conn:
+                self.return_db_connection(conn)
 
     def get_progress(self, category: str) -> Dict[str, Any]:
         """Get progress with fresh database state"""
