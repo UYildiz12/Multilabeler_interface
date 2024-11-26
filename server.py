@@ -60,70 +60,55 @@ class CategoryLock:
 
 class ProgressStore:
     def __init__(self):
-        self.database_url = os.environ.get('DATABASE_URL')
-        if self.database_url and self.database_url.startswith("postgres://"):
-            self.database_url = self.database_url.replace("postgres://", "postgresql://", 1)
-        self.init_db()
+        self.progress_file = 'progress_data.json'
+        self.backup_file = f'progress_data_backup_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
         logging.debug("=== Initializing ProgressStore ===")
-        self.progress_data = self.load_from_db()
+        self.progress_data = self.load_from_json()
         logging.debug(f"Initial progress data: {json.dumps(self.progress_data, indent=2)}")
-        logging.debug(f"Categories loaded: {list(self.progress_data.keys())}")
         self.last_labeled_indices = self.load_last_labeled_indices()
         logging.debug(f"Last labeled indices: {self.last_labeled_indices}")
 
-    def init_db(self):
-        with self.get_db_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute("""
-                    CREATE TABLE IF NOT EXISTS progress (
-                        category TEXT PRIMARY KEY,
-                        data JSONB
-                    )
-                """)
-                conn.commit()
-
-    def get_db_connection(self):
-        return psycopg2.connect(self.database_url)
-
-    def load_from_db(self) -> Dict[str, Dict[str, Any]]:
-        logging.debug("\n=== Loading from Database ===")
+    def load_from_json(self) -> Dict[str, Dict[str, Any]]:
+        """Load progress data from a JSON file."""
+        logging.debug("\n=== Loading from JSON ===")
         try:
-            with self.get_db_connection() as conn:
-                with conn.cursor() as cur:
-                    cur.execute("SELECT category, data FROM progress")
-                    results = cur.fetchall()
-                    loaded_data = {row[0]: row[1] for row in results}
-                    logging.debug(f"Loaded categories: {list(loaded_data.keys())}")
-                    for cat, data in loaded_data.items():
-                        logging.debug(f"\nCategory: {cat}")
-                        logging.debug(f"Number of items: {len(data)}")
-                        logging.debug(f"Sample items: {dict(list(data.items())[:2])}")
-                    return loaded_data
+            if os.path.exists(self.progress_file):
+                with open(self.progress_file, 'r') as f:
+                    data = json.load(f)
+                logging.debug(f"Loaded data: {json.dumps(data, indent=2)}")
+                return data
+            else:
+                logging.warning("Progress file not found, initializing empty progress data.")
+                return {}
         except Exception as e:
-            logging.error(f"Database load error: {e}", exc_info=True)
+            logging.error(f"Error loading progress data: {e}", exc_info=True)
             return {}
 
-    def save_to_db(self):
-        logging.debug("\n=== Saving to Database ===")
+    def save_to_json(self):
+        """Save progress data to a JSON file, creating a backup to prevent data loss."""
+        logging.debug("\n=== Saving to JSON ===")
         try:
-            with self.get_db_connection() as conn:
-                with conn.cursor() as cur:
-                    for category, data in self.progress_data.items():
-                        logging.debug(f"\nCategory: {category}")
-                        logging.debug(f"Data size: {len(data)} items")
-                        logging.debug(f"Sample of data being saved: {dict(list(data.items())[:2])}")
-                        
-                        cur.execute("""
-                            INSERT INTO progress (category, data)
-                            VALUES (%s, %s)
-                            ON CONFLICT (category) 
-                            DO UPDATE SET data = %s
-                        """, (category, Json(data), Json(data)))
-                    conn.commit()
-                    logging.debug("Database commit successful")
+            if os.path.exists(self.progress_file):
+                os.rename(self.progress_file, self.backup_file)
+                logging.debug(f"Created backup of progress file: {self.backup_file}")
+            with open(self.progress_file, 'w') as f:
+                json.dump(self.progress_data, f, indent=2)
+            logging.debug("Progress data successfully saved to JSON file.")
         except Exception as e:
-            logging.error(f"Database save error: {e}", exc_info=True)
+            logging.error(f"Error saving progress data: {e}", exc_info=True)
             raise
+
+    def init_db(self):
+        pass
+
+    def get_db_connection(self):
+        pass
+
+    def load_from_db(self) -> Dict[str, Dict[str, Any]]:
+        return self.load_from_json()
+
+    def save_to_db(self):
+        self.save_to_json()
 
     def update(self, category: str, index: str, data: Dict[str, Any]):
         logging.debug(f"\n=== Updating Progress ===")
@@ -148,11 +133,11 @@ class ProgressStore:
         logging.debug(f"Verification - data at index {index}: {self.progress_data[category].get(str(index))}")
         
         try:
-            self.save_to_db()
-            logging.debug("Update successfully saved to database")
+            self.save_to_json()
+            logging.debug("Update successfully saved to JSON file.")
         except Exception as e:
             logging.error(f"Failed to save update: {e}")
-            # Rollback in memory if DB save failed
+            # Rollback in memory if save failed
             self.progress_data[category] = prev_state
             logging.debug("Rolled back to previous state due to save failure")
             raise
@@ -169,10 +154,6 @@ class ProgressStore:
         return last_indices
 
 
-    def save_backup(self):
-        with open(self.backup_file, 'w') as f:
-            json.dump(self.progress_data, f, indent=2)
-
     def get_progress(self, category: str) -> Dict[str, Any]:
         logging.debug(f"\n=== Getting Progress for {category} ===")
         progress = self.progress_data.get(category, {})
@@ -185,9 +166,10 @@ class ProgressStore:
         return self.last_labeled_indices.get(category, -1)
 
     def get_category_stats(self, category: str) -> Dict[str, Any]:
-        """Get accurate statistics for a category"""
+        """Get accurate statistics for a category from JSON data."""
         try:
             logging.debug(f"=== Getting stats for category: {category} ===")
+            self.progress_data = self.load_from_json()
             category_data = self.progress_data.get(category, {})
             logging.debug(f"Raw category data length: {len(category_data)}")
             logging.debug(f"Category data keys: {list(category_data.keys())}")
