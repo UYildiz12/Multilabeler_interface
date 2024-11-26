@@ -312,6 +312,23 @@ def release_lock():
     else:
         return jsonify({"error": "failed to release lock"}), 400
 
+@app.route('/upload_progress', methods=['POST'])
+def upload_progress():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+        
+        # Assume data is a dictionary with category as keys
+        for category, labels in data.items():
+            for index, label_data in labels.items():
+                store.update(category, index, label_data)
+                
+        return jsonify({"status": "success"}), 200
+    except Exception as e:
+        logging.error(f"Error in upload_progress: {e}")
+        return jsonify({"error": str(e)}), 500
+
 # Initialize store
 store = ProgressStore()
 
