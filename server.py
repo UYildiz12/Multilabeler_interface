@@ -24,13 +24,13 @@ class ProgressStore:
         # Configure logging
         logging.basicConfig(level=logging.INFO)
         
-        # Initialize connection pool with proper settings for Heroku
+        # Reduce max connections and add cleanup mechanism
         try:
             self.pool = psycopg2.pool.SimpleConnectionPool(
                 minconn=1,
-                maxconn=20,  # Increased for production
+                maxconn=10,  # Reduced from 20 to 10
                 dsn=self.database_url,
-                connect_timeout=3  # Add timeout
+                connect_timeout=3
             )
             logging.info("Database connection pool initialized successfully")
         except Exception as e:
@@ -71,68 +71,82 @@ class ProgressStore:
         """Get database connection from pool with retry logic"""
         max_retries = 3
         retry_count = 0
+        last_error = None
         
         while retry_count < max_retries:
             try:
                 conn = self.pool.getconn()
-                return conn
+                if conn:
+                    return conn
             except Exception as e:
+                last_error = e
                 retry_count += 1
-                if retry_count == max_retries:
-                    logging.error(f"Failed to get connection after {max_retries} attempts: {e}")
-                    raise
-                logging.warning(f"Database connection attempt {retry_count} failed, retrying...")
-                time.sleep(1)  # Add delay between retries
+                if retry_count < max_retries:
+                    logging.warning(f"Database connection attempt {retry_count} failed, retrying...")
+                    time.sleep(1)  # Wait before retry
+                
+        logging.error(f"Failed to get connection after {max_retries} attempts: {last_error}")
+        raise last_error
 
     def return_db_connection(self, conn):
-        """Return connection to pool"""
-        try:
-            self.pool.putconn(conn)
-        except Exception as e:
-            logging.error(f"Error returning connection to pool: {e}")
+        """Return connection to pool with error handling"""
+        if conn:
+            try:
+                self.pool.putconn(conn)
+            except Exception as e:
+                logging.error(f"Error returning connection to pool: {e}")
+                try:
+                    conn.close()
+                except:
+                    pass
 
     def __del__(self):
-        """Clean up connection pool on deletion"""
-        if hasattr(self, 'pool'):
-            self.pool.closeall()
+        """Ensure all connections are closed on deletion"""
+        try:
+            if hasattr(self, 'pool'):
+                self.pool.closeall()
+                logging.info("Database connection pool closed successfully")
+        except Exception as e:
+            logging.error(f"Error closing connection pool: {e}")
 
     def _refresh_state(self):
-        """Refresh in-memory state from database"""
-        self.progress_data = {}
-        self.last_labeled_indices = {}
-        
+        """Refresh in-memory state from database with proper connection handling"""
+        conn = None
         try:
-            with self.get_db_connection() as conn:
-                with conn.cursor() as cur:
-                    cur.execute("""
-                        SELECT category, index_id, label, confidence, timestamp 
-                        FROM progress
-                    """)
-                    rows = cur.fetchall()
+            conn = self.get_db_connection()
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT category, index_id, label, confidence, timestamp 
+                    FROM progress
+                """)
+                rows = cur.fetchall()
                     
-                    for row in rows:
-                        category, index_id, label, confidence, timestamp = row
+                for row in rows:
+                    category, index_id, label, confidence, timestamp = row
                         
-                        if category not in self.progress_data:
-                            self.progress_data[category] = {}
+                    if category not in self.progress_data:
+                        self.progress_data[category] = {}
                             
-                        self.progress_data[category][index_id] = {
-                            "label": label,
-                            "confidence": confidence,
-                            "timestamp": timestamp.isoformat() if timestamp else None
-                        }
+                    self.progress_data[category][index_id] = {
+                        "label": label,
+                        "confidence": confidence,
+                        "timestamp": timestamp.isoformat() if timestamp else None
+                    }
                         
-                        # Update last labeled index
-                        if label and label != "unlabeled":
-                            current_index = int(index_id)
-                            self.last_labeled_indices[category] = max(
-                                self.last_labeled_indices.get(category, -1),
-                                current_index
-                            )
+                    # Update last labeled index
+                    if label and label != "unlabeled":
+                        current_index = int(index_id)
+                        self.last_labeled_indices[category] = max(
+                            self.last_labeled_indices.get(category, -1),
+                            current_index
+                        )
                             
         except Exception as e:
             logging.error(f"Error refreshing state from database: {e}")
             raise
+        finally:
+            if conn:
+                self.return_db_connection(conn)
 
     def update(self, category: str, index: str, data: Dict[str, Any]):
         """Update progress with connection pooling and error handling"""
@@ -360,6 +374,12 @@ def upload_progress():
 
 # Initialize store
 store = ProgressStore()
+
+@app.teardown_appcontext
+def shutdown_session(exception=None):
+    """Ensure connections are returned to pool when Flask context ends"""
+    if hasattr(store, 'pool'):
+        store.pool.closeall()
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 8080))
