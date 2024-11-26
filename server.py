@@ -2,12 +2,13 @@ import os
 import json
 import logging
 from typing import Dict, Any
-from datetime import datetime
+from datetime import datetime, timedelta
 import psycopg2
 from psycopg2.extras import Json
 from psycopg2 import pool
 import time
 from flask import Flask, request, jsonify
+from typing import Dict, Any, Callable, List
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -32,7 +33,7 @@ class ProgressStore:
         # Initialize dictionaries before calling refresh_state
         self.progress_data = {}
         self.last_labeled_indices = {}
-        self.locked_categories = {}  # Dict to track {category: user_id}
+        self.locked_categories = {}  # {category: {"user": username, "timestamp": datetime}}
         
         # Initialize database
         self.init_db()
@@ -105,6 +106,24 @@ class ProgressStore:
                         ON progress(category)
                     """)
                     conn.commit()
+                
+                # Create locks table
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS locks (
+                        id SERIAL PRIMARY KEY,
+                        category TEXT NOT NULL,
+                        user_id TEXT NOT NULL,
+                        action TEXT NOT NULL,
+                        timestamp TIMESTAMP NOT NULL,
+                        reason TEXT
+                    )
+                """)
+                # Create index for better query performance
+                cur.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_locks_category 
+                    ON locks(category)
+                """)
+                conn.commit()
 
     def get_db_connection(self):
         """Get database connection with better error handling"""
@@ -203,45 +222,6 @@ class ProgressStore:
             if conn:
                 self.return_db_connection(conn)
 
-    def init_db(self):
-        """Initialize database tables with modified schema"""
-        with self.get_db_connection() as conn:
-            with conn.cursor() as cur:
-                # First check if we need to modify the confidence column
-                cur.execute("""
-                    SELECT data_type 
-                    FROM information_schema.columns 
-                    WHERE table_name = 'progress' 
-                    AND column_name = 'confidence'
-                """)
-                result = cur.fetchone()
-                
-                if result and result[0] != 'text':
-                    # If table exists with wrong type, alter it
-                    cur.execute("""
-                        ALTER TABLE progress 
-                        ALTER COLUMN confidence TYPE TEXT
-                    """)
-                    conn.commit()
-                else:
-                    # If table doesn't exist, create it
-                    cur.execute("""
-                        CREATE TABLE IF NOT EXISTS progress (
-                            category TEXT NOT NULL,
-                            index_id TEXT NOT NULL,
-                            label TEXT,
-                            confidence TEXT,
-                            timestamp TIMESTAMP,
-                            PRIMARY KEY (category, index_id)
-                        )
-                    """)
-                    # Create indices for better query performance 
-                    cur.execute("""
-                        CREATE INDEX IF NOT EXISTS idx_progress_category 
-                        ON progress(category)
-                    """)
-                    conn.commit()
-
     def update(self, category: str, index: str, data: Dict[str, Any]):
         """Update progress with connection pooling and error handling"""
         conn = None
@@ -327,23 +307,115 @@ class ProgressStore:
             logging.error(f"Error getting category stats: {e}")
             return {'total_labeled': 0, 'label_distribution': {}}
 
-    def get_locked_categories(self) -> Dict[str, str]:
-        """Return the currently locked categories."""
-        return self.locked_categories
+    def get_locked_categories(self) -> Dict[str, Dict[str, Any]]:
+        """Return currently locked categories with lock info."""
+        now = datetime.now()
+        active_locks = {}
+        
+        # Filter out expired locks and format response
+        for category, lock_info in self.locked_categories.items():
+            if (now - lock_info["timestamp"]) <= timedelta(minutes=30):
+                active_locks[category] = {
+                    "user": lock_info["user"],
+                    "locked_since": lock_info["timestamp"].isoformat()
+                }
+            else:
+                # Remove expired lock
+                del self.locked_categories[category]
+        
+        return active_locks
 
     def acquire_lock(self, user_id: str, category: str) -> bool:
-        """Try to acquire a lock for a category."""
+        """Try to acquire a lock for a category with timeout and logging."""
+        now = datetime.now()
+        
+        # Check if category is locked
         if category in self.locked_categories:
-            return False  # Lock already acquired
-        self.locked_categories[category] = user_id
+            lock_info = self.locked_categories[category]
+            # Check if lock is by same user
+            if lock_info["user"] == user_id:
+                # Refresh lock timestamp
+                lock_info["timestamp"] = now
+                self._log_lock_action(category, user_id, "refresh", "User refreshed existing lock")
+                return True
+            # Check if lock has expired
+            if (now - lock_info["timestamp"]) > timedelta(minutes=30):
+                # Lock expired, remove it
+                self._log_lock_action(category, lock_info["user"], "expired", 
+                                    f"Lock expired after {(now - lock_info['timestamp']).seconds} seconds")
+                del self.locked_categories[category]
+            else:
+                # Lock is valid and held by another user
+                self._log_lock_action(category, user_id, "denied", 
+                                    f"Lock held by {lock_info['user']}")
+                return False
+        
+        # Acquire new lock
+        self.locked_categories[category] = {
+            "user": user_id,
+            "timestamp": now
+        }
+        self._log_lock_action(category, user_id, "acquire", "New lock acquired")
         return True
 
     def release_lock(self, user_id: str, category: str) -> bool:
-        """Release the lock for a category."""
-        if self.locked_categories.get(category) == user_id:
-            del self.locked_categories[category]
-            return True
+        """Release the lock for a category if owned by user."""
+        if category in self.locked_categories:
+            lock_info = self.locked_categories[category]
+            if lock_info["user"] == user_id:
+                del self.locked_categories[category]
+                self._log_lock_action(category, user_id, "release", "User released lock")
+                return True
+            else:
+                self._log_lock_action(category, user_id, "release_denied", 
+                                    f"Attempted to release lock held by {lock_info['user']}")
         return False
+
+    def _log_lock_action(self, category: str, user_id: str, action: str, reason: str = None):
+        """Log lock-related actions to database"""
+        try:
+            with self.get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO locks (category, user_id, action, timestamp, reason)
+                        VALUES (%s, %s, %s, %s, %s)
+                    """, (category, user_id, action, datetime.now(), reason))
+                    conn.commit()
+        except Exception as e:
+            logging.error(f"Failed to log lock action: {e}")
+
+    def get_lock_history(self, category: str = None, limit: int = 100) -> List[Dict[str, Any]]:
+        """Get lock history from database"""
+        try:
+            with self.get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    if category:
+                        cur.execute("""
+                            SELECT category, user_id, action, timestamp, reason
+                            FROM locks 
+                            WHERE category = %s
+                            ORDER BY timestamp DESC
+                            LIMIT %s
+                        """, (category, limit))
+                    else:
+                        cur.execute("""
+                            SELECT category, user_id, action, timestamp, reason
+                            FROM locks 
+                            ORDER BY timestamp DESC
+                            LIMIT %s
+                        """, (limit,))
+                    
+                    rows = cur.fetchall()
+                    return [{
+                        "category": row[0],
+                        "user_id": row[1],
+                        "action": row[2],
+                        "timestamp": row[3].isoformat(),
+                        "reason": row[4]
+                    } for row in rows]
+        except Exception as e:
+            logging.error(f"Error getting lock history: {e}")
+            return []
 
     def cleanup(self):
         """Proper cleanup method"""
@@ -478,6 +550,18 @@ def upload_progress():
         return jsonify({"status": "success"}), 200
     except Exception as e:
         logging.error(f"Error in upload_progress: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# Add new endpoint for lock history
+@app.route('/get_lock_history', methods=['GET'])
+def get_lock_history():
+    try:
+        category = request.args.get('category')
+        limit = request.args.get('limit', default=100, type=int)
+        history = store.get_lock_history(category, limit)
+        return jsonify(history), 200
+    except Exception as e:
+        logging.error(f"Error in get_lock_history: {e}")
         return jsonify({"error": str(e)}), 500
 
 # Initialize store
