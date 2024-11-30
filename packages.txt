@@ -4,3 +4,6 @@ build-essential
 libjpeg-dev
 zlib1g-dev
 libpng-dev
+libpq-dev
+python3-tk
+python3-pil
