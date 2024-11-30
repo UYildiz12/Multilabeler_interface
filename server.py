@@ -10,6 +10,7 @@ import time
 from flask import Flask, request, jsonify
 from typing import Dict, Any, Callable, List
 from threading import Lock
+import threading
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -54,24 +55,68 @@ class ProgressStore:
             self.progress_data = {}
             self.last_labeled_indices = {}
 
-    def _initialize_pool(self):
-        """Initialize or reinitialize the connection pool"""
-        with self._pool_lock:  # Thread-safe pool initialization
+        # Add connection pool monitoring
+        self._pool_monitor = threading.Thread(target=self._monitor_pool, daemon=True)
+        self._pool_monitor.start()
+        
+        # Add pool health tracking
+        self._pool_healthy = True
+        self._last_health_check = datetime.now()
+        self._health_check_interval = timedelta(seconds=30)
+
+    def _monitor_pool(self):
+        """Monitor pool health and recover if needed"""
+        while not self.is_shutting_down:
             try:
-                if self.pool:
-                    self._close_all_connections()
-                
-                self.pool = psycopg2.pool.ThreadedConnectionPool(
-                    minconn=1,
-                    maxconn=10,  # Increased max connections
-                    dsn=self.database_url,
-                    connect_timeout=3
-                )
-                self._last_pool_reset = datetime.now()
-                logging.info("Database connection pool initialized successfully")
+                time.sleep(30)  # Check every 30 seconds
+                if (datetime.now() - self._last_health_check) > self._health_check_interval:
+                    self._check_pool_health()
             except Exception as e:
-                logging.error(f"Failed to create connection pool: {e}")
-                raise
+                logging.error(f"Pool monitor error: {e}")
+
+    def _check_pool_health(self):
+        """Check pool health and reinitialize if needed"""
+        try:
+            with self.get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute('SELECT 1')
+            self._pool_healthy = True
+        except Exception as e:
+            logging.error(f"Pool health check failed: {e}")
+            self._pool_healthy = False
+            self._initialize_pool()  # Reinitialize pool
+        finally:
+            self._last_health_check = datetime.now()
+
+    def _initialize_pool(self):
+        """Initialize or reinitialize the connection pool with backoff"""
+        max_retries = 5
+        retry_count = 0
+        
+        while retry_count < max_retries:
+            try:
+                with self._pool_lock:
+                    if self.pool:
+                        self._close_all_connections()
+                    
+                    self.pool = psycopg2.pool.ThreadedConnectionPool(
+                        minconn=2,  # Increased minimum connections
+                        maxconn=20,  # Increased maximum connections
+                        dsn=self.database_url,
+                        connect_timeout=5
+                    )
+                    self._last_pool_reset = datetime.now()
+                    self._pool_healthy = True
+                    logging.info("Database connection pool initialized successfully")
+                    return
+            except Exception as e:
+                retry_count += 1
+                delay = 2 ** retry_count  # Exponential backoff
+                logging.error(f"Failed to create connection pool (attempt {retry_count}/{max_retries}): {e}")
+                if retry_count < max_retries:
+                    time.sleep(delay)
+                else:
+                    raise
 
     def _close_all_connections(self):
         """Safely close all connections"""
@@ -91,40 +136,30 @@ class ProgressStore:
             pass
 
     def get_db_connection(self):
-        """Get database connection with improved error handling and reset logic"""
-        if self.is_shutting_down:
-            raise Exception("Service is shutting down")
+        """Get database connection with improved error handling"""
+        if not self._pool_healthy:
+            self._check_pool_health()
             
         max_retries = 3
         retry_count = 0
-        base_delay = 1  # Base delay in seconds
-        
-        # Check if pool needs reset (every 1 hour)
-        if (datetime.now() - self._last_pool_reset).total_seconds() > 3600:
-            self._initialize_pool()
         
         while retry_count < max_retries:
             try:
                 with self._pool_lock:
-                    if not self.pool or self.pool.closed:
-                        self._initialize_pool()
                     conn = self.pool.getconn()
-                    
-                if conn:
-                    if conn.closed:
-                        self.pool.putconn(conn)
-                        raise Exception("Retrieved closed connection")
-                    self._active_connections.add(conn)
-                    return conn
-                    
+                    if conn and not conn.closed:
+                        self._active_connections.add(conn)
+                        return conn
+                    raise Exception("Invalid connection from pool")
             except Exception as e:
                 retry_count += 1
                 if retry_count < max_retries:
-                    delay = base_delay * (2 ** (retry_count - 1))  # Exponential backoff
-                    logging.warning(f"Retrying database connection ({retry_count}/{max_retries}) after {delay}s delay")
+                    delay = 2 ** retry_count
+                    logging.warning(f"Retrying connection ({retry_count}/{max_retries}) after {delay}s")
                     time.sleep(delay)
+                    if not self._pool_healthy:
+                        self._initialize_pool()
                 else:
-                    logging.error(f"Failed to get connection after {max_retries} attempts")
                     raise
 
     def return_db_connection(self, conn):
@@ -580,14 +615,33 @@ def save_progress():
 @app.route('/health', methods=['GET'])
 def health_check():
     try:
-        # Try to connect to the database
+        # Check pool health
+        if not store._pool_healthy:
+            store._check_pool_health()
+            
+        if not store._pool_healthy:
+            return jsonify({
+                "status": "unhealthy",
+                "error": "Database pool is unhealthy"
+            }), 503
+            
+        # Test database connection
         with store.get_db_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute('SELECT 1')
-        return jsonify({"status": "healthy"}), 200
+                
+        return jsonify({
+            "status": "healthy",
+            "pool_size": len(store._active_connections),
+            "last_reset": store._last_pool_reset.isoformat()
+        }), 200
+        
     except Exception as e:
         logging.error(f"Health check failed: {e}")
-        return jsonify({"status": "unhealthy", "error": str(e)}), 503
+        return jsonify({
+            "status": "unhealthy",
+            "error": str(e)
+        }), 503
 
 # Add a route to handle get_locked_categories
 @app.route('/get_locked_categories', methods=['GET'])
