@@ -12,7 +12,7 @@ class APIService:
         # Normalize base URL by removing trailing slash
         self.base_url = (base_url or os.getenv('API_URL', 'https://multilabeler-interface-d9bb61fef429.herokuapp.com')).rstrip('/')
         self.last_sync_time = datetime.now()
-        self.sync_interval = timedelta(seconds=10)  # Reduced from 30 to 10 seconds
+        self.sync_interval = timedelta(seconds=30)  # Reduced from 30 to 10 seconds
         self.session = self._create_session()
         self._error_count = 0
         self._max_errors = 3
@@ -73,43 +73,70 @@ class APIService:
             self._handle_request_error(e)
             raise
 
+    @backoff.on_exception(
+        backoff.expo,
+        (requests.exceptions.RequestException, ConnectionError),
+        max_tries=5,
+        max_time=30
+    )
     def acquire_lock(self, user_id: str, category: str) -> bool:
+        """Acquire lock with retries and validation"""
         try:
-            if not user_id:  # Add validation
+            if not user_id:
                 logging.error("Cannot acquire lock: No user ID provided")
                 return False
                 
-            # Sanitize category name
+            # Check current lock status first
+            locked_categories = self.get_locked_categories()
+            if category in locked_categories:
+                lock_info = locked_categories[category]
+                if lock_info["user"] != user_id:
+                    logging.info(f"Category {category} is locked by {lock_info['user']}")
+                    return False
+            
             sanitized_category = category.replace('/', '_')
             response = self._make_request(
                 'POST',
                 'acquire_lock',
                 json={"user_id": user_id, "category": sanitized_category}
             )
-            return response.status_code == 200
+            
+            if response.status_code == 200:
+                # Verify lock was acquired
+                locked_categories = self.get_locked_categories()
+                return (category in locked_categories and 
+                        locked_categories[category]["user"] == user_id)
+            return False
+            
         except requests.RequestException as e:
             logging.error(f"Failed to acquire lock: {str(e)}")
             return False
 
+    @backoff.on_exception(
+        backoff.expo,
+        (requests.exceptions.RequestException, ConnectionError),
+        max_tries=5,
+        max_time=30
+    )
     def release_lock(self, user_id: str, category: str) -> bool:
-        """Release lock for a category."""
         try:
             if not user_id or not category:
                 logging.error("user_id and category are required to release lock")
                 return False
-            # Sanitize category name
+                
             sanitized_category = category.replace('/', '_')
             response = self._make_request(
                 'POST',
                 'release_lock',
                 json={"user_id": user_id, "category": sanitized_category}
             )
+            
             if response.status_code == 200:
-                self.sync_all_progress()
-                return True
-            else:
-                logging.error(f"Failed to release lock: {response.text}")
-                return False
+                # Verify lock was released
+                locked_categories = self.get_locked_categories()
+                return category not in locked_categories
+            return False
+            
         except requests.RequestException as e:
             logging.error(f"Failed to release lock: {str(e)}")
             return False

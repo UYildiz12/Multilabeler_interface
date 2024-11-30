@@ -1,1 +1,1 @@
-web: gunicorn server:app
+web: gunicorn server:app --workers 4 --threads 2 --timeout 120 --max-requests 1000 --max-requests-jitter 50 --keep-alive 5 --worker-class gevent
