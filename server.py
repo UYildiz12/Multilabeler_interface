@@ -27,20 +27,23 @@ class ProgressStore:
         # Configure logging
         logging.basicConfig(level=logging.INFO)
         
-        # Reduce max connections and add cleanup mechanism
+        # Initialize all attributes first
         self.pool = None
-        self._initialize_pool()
         self.is_shutting_down = False
-        self._pool_lock = Lock()  # Add thread lock for pool access
-        
-        # Add connection tracking
+        self._pool_lock = Lock()  # Initialize lock first
         self._active_connections = set()
         self._last_pool_reset = datetime.now()
-            
-        # Initialize dictionaries before calling refresh_state
+        self._pool_healthy = True
+        self._last_health_check = datetime.now()
+        self._health_check_interval = timedelta(seconds=30)
+        
+        # Initialize state containers
         self.progress_data = {}
         self.last_labeled_indices = {}
-        self.locked_categories = {}  # {category: {"user": username, "timestamp": datetime}}
+        self.locked_categories = {}
+        
+        # Now initialize the pool
+        self._initialize_pool()
         
         # Initialize database
         self.init_db()
@@ -54,15 +57,10 @@ class ProgressStore:
             # Initialize empty state as fallback
             self.progress_data = {}
             self.last_labeled_indices = {}
-
-        # Add connection pool monitoring
+            
+        # Start pool monitor after everything is initialized
         self._pool_monitor = threading.Thread(target=self._monitor_pool, daemon=True)
         self._pool_monitor.start()
-        
-        # Add pool health tracking
-        self._pool_healthy = True
-        self._last_health_check = datetime.now()
-        self._health_check_interval = timedelta(seconds=30)
 
     def _monitor_pool(self):
         """Monitor pool health and recover if needed"""
