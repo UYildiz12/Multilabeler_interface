@@ -9,6 +9,7 @@ from psycopg2 import pool
 import time
 from flask import Flask, request, jsonify
 from typing import Dict, Any, Callable, List
+from threading import Lock
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -26,9 +27,14 @@ class ProgressStore:
         logging.basicConfig(level=logging.INFO)
         
         # Reduce max connections and add cleanup mechanism
-        self.pool = None  # Initialize as None
+        self.pool = None
         self._initialize_pool()
-        self.is_shutting_down = False  # Add shutdown flag
+        self.is_shutting_down = False
+        self._pool_lock = Lock()  # Add thread lock for pool access
+        
+        # Add connection tracking
+        self._active_connections = set()
+        self._last_pool_reset = datetime.now()
             
         # Initialize dictionaries before calling refresh_state
         self.progress_data = {}
@@ -50,23 +56,98 @@ class ProgressStore:
 
     def _initialize_pool(self):
         """Initialize or reinitialize the connection pool"""
+        with self._pool_lock:  # Thread-safe pool initialization
+            try:
+                if self.pool:
+                    self._close_all_connections()
+                
+                self.pool = psycopg2.pool.ThreadedConnectionPool(
+                    minconn=1,
+                    maxconn=10,  # Increased max connections
+                    dsn=self.database_url,
+                    connect_timeout=3
+                )
+                self._last_pool_reset = datetime.now()
+                logging.info("Database connection pool initialized successfully")
+            except Exception as e:
+                logging.error(f"Failed to create connection pool: {e}")
+                raise
+
+    def _close_all_connections(self):
+        """Safely close all connections"""
         try:
             if self.pool:
+                # Close tracked connections
+                for conn in list(self._active_connections):
+                    try:
+                        if not conn.closed:
+                            conn.close()
+                        self._active_connections.remove(conn)
+                    except:
+                        pass
+                # Close pool
+                self.pool.closeall()
+        except:
+            pass
+
+    def get_db_connection(self):
+        """Get database connection with improved error handling and reset logic"""
+        if self.is_shutting_down:
+            raise Exception("Service is shutting down")
+            
+        max_retries = 3
+        retry_count = 0
+        base_delay = 1  # Base delay in seconds
+        
+        # Check if pool needs reset (every 1 hour)
+        if (datetime.now() - self._last_pool_reset).total_seconds() > 3600:
+            self._initialize_pool()
+        
+        while retry_count < max_retries:
+            try:
+                with self._pool_lock:
+                    if not self.pool or self.pool.closed:
+                        self._initialize_pool()
+                    conn = self.pool.getconn()
+                    
+                if conn:
+                    if conn.closed:
+                        self.pool.putconn(conn)
+                        raise Exception("Retrieved closed connection")
+                    self._active_connections.add(conn)
+                    return conn
+                    
+            except Exception as e:
+                retry_count += 1
+                if retry_count < max_retries:
+                    delay = base_delay * (2 ** (retry_count - 1))  # Exponential backoff
+                    logging.warning(f"Retrying database connection ({retry_count}/{max_retries}) after {delay}s delay")
+                    time.sleep(delay)
+                else:
+                    logging.error(f"Failed to get connection after {max_retries} attempts")
+                    raise
+
+    def return_db_connection(self, conn):
+        """Return connection to pool with improved cleanup"""
+        if conn:
+            try:
+                if conn in self._active_connections:
+                    self._active_connections.remove(conn)
+                    if not conn.closed:
+                        with self._pool_lock:
+                            self.pool.putconn(conn)
+            except Exception as e:
+                logging.error(f"Error returning connection to pool: {e}")
                 try:
-                    self.pool.closeall()
+                    if not conn.closed:
+                        conn.close()
                 except:
                     pass
-            
-            self.pool = psycopg2.pool.ThreadedConnectionPool(  # Change to ThreadedConnectionPool
-                minconn=1,
-                maxconn=5,  # Reduced further to prevent connection exhaustion
-                dsn=self.database_url,
-                connect_timeout=3
-            )
-            logging.info("Database connection pool initialized successfully")
-        except Exception as e:
-            logging.error(f"Failed to create connection pool: {e}")
-            raise
+
+    def __del__(self):
+        """Enhanced cleanup on deletion"""
+        self.is_shutting_down = True
+        self._close_all_connections()
 
     def init_db(self):
         """Initialize database tables with modified schema"""
@@ -579,9 +660,14 @@ store = ProgressStore()
 
 @app.teardown_appcontext
 def shutdown_session(exception=None):
-    """Only log errors, don't close connections"""
+    """Improved cleanup on request end"""
     if exception:
         logging.error(f"Error in request: {str(exception)}")
+    if 'store' in globals():
+        try:
+            store._close_all_connections()
+        except:
+            pass
 
 # Add proper shutdown handling
 import atexit
