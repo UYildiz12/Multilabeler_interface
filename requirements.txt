@@ -1,5 +1,5 @@
 streamlit==1.24.0
-pillow
+pillow>=9.0.0,<9.6.0
 numpy>=1.24.0
 matplotlib>=3.5.0
 requests==2.26.0
