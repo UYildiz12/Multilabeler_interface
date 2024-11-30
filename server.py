@@ -62,11 +62,6 @@ class ProgressStore:
         self._pool_monitor = threading.Thread(target=self._monitor_pool, daemon=True)
         self._pool_monitor.start()
         
-        # Add new attribute for active locks table
-        self._initialize_pool()
-        self.init_db()
-        self._initialize_locks_table()
-
     def _monitor_pool(self):
         """Monitor pool health and recover if needed"""
         while not self.is_shutting_down:
@@ -191,6 +186,20 @@ class ProgressStore:
         """Initialize database tables with modified schema"""
         with self.get_db_connection() as conn:
             with conn.cursor() as cur:
+                try:
+                    # First create the active_locks table
+                    cur.execute("""
+                        CREATE TABLE IF NOT EXISTS active_locks (
+                            category TEXT PRIMARY KEY,
+                            user_id TEXT NOT NULL,
+                            timestamp TIMESTAMP NOT NULL
+                        )
+                    """)
+                    conn.commit()
+                except Exception as e:
+                    logging.error(f"Error creating active_locks table: {e}")
+                    conn.rollback()
+
                 # First check if we need to modify the confidence column
                 cur.execute("""
                     SELECT data_type 
@@ -227,22 +236,26 @@ class ProgressStore:
                     conn.commit()
                 
                 # Create locks table
-                cur.execute("""
-                    CREATE TABLE IF NOT EXISTS locks (
-                        id SERIAL PRIMARY KEY,
-                        category TEXT NOT NULL,
-                        user_id TEXT NOT NULL,
-                        action TEXT NOT NULL,
-                        timestamp TIMESTAMP NOT NULL,
-                        reason TEXT
-                    )
-                """)
-                # Create index for better query performance
-                cur.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_locks_category 
-                    ON locks(category)
-                """)
-                conn.commit()
+                try:
+                    cur.execute("""
+                        CREATE TABLE IF NOT EXISTS locks (
+                            id SERIAL PRIMARY KEY,
+                            category TEXT NOT NULL,
+                            user_id TEXT NOT NULL,
+                            action TEXT NOT NULL,
+                            timestamp TIMESTAMP NOT NULL,
+                            reason TEXT
+                        )
+                    """)
+                    # Create index for better query performance
+                    cur.execute("""
+                        CREATE INDEX IF NOT EXISTS idx_locks_category 
+                        ON locks(category)
+                    """)
+                    conn.commit()
+                except Exception as e:
+                    logging.error(f"Error creating locks table: {e}")
+                    conn.rollback()
 
     def get_db_connection(self):
         """Get database connection with better error handling"""
@@ -473,56 +486,39 @@ class ProgressStore:
             with conn.cursor() as cur:
                 # First try to update existing lock if it's ours or expired
                 cur.execute("""
-                    UPDATE active_locks 
-                    SET timestamp = %s 
+                    DELETE FROM active_locks 
                     WHERE category = %s 
                     AND (
                         user_id = %s 
                         OR timestamp < %s - INTERVAL '30 minutes'
                     )
+                """, (category, user_id, now))
+
+                # Try to insert new lock
+                cur.execute("""
+                    INSERT INTO active_locks (category, user_id, timestamp)
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (category) DO NOTHING
                     RETURNING user_id
-                """, (now, category, user_id, now))
+                """, (category, user_id, now))
                 
                 result = cur.fetchone()
-                
                 if result:
-                    # We updated an existing lock
                     conn.commit()
-                    if result[0] == user_id:
-                        self._log_lock_action(category, user_id, "refresh", "Lock refreshed")
-                    else:
-                        self._log_lock_action(category, user_id, "acquire", "Acquired expired lock")
+                    self._log_lock_action(category, user_id, "acquire", "New lock acquired")
                     return True
-                
-                # Try to insert new lock
-                try:
-                    cur.execute("""
-                        INSERT INTO active_locks (category, user_id, timestamp)
-                        VALUES (%s, %s, %s)
-                        ON CONFLICT (category) DO NOTHING
-                        RETURNING user_id
-                    """, (category, user_id, now))
                     
-                    if cur.fetchone():
-                        conn.commit()
-                        self._log_lock_action(category, user_id, "acquire", "New lock acquired")
-                        return True
-                        
-                    # If we get here, lock exists and is active
-                    cur.execute("""
-                        SELECT user_id, timestamp 
-                        FROM active_locks 
-                        WHERE category = %s
-                    """, (category,))
-                    current_lock = cur.fetchone()
-                    if current_lock:
-                        self._log_lock_action(category, user_id, "denied", 
-                            f"Lock held by {current_lock[0]} since {current_lock[1]}")
-                    return False
-                    
-                except psycopg2.IntegrityError:
-                    conn.rollback()
-                    return False
+                # Check if someone else holds the lock
+                cur.execute("""
+                    SELECT user_id, timestamp 
+                    FROM active_locks 
+                    WHERE category = %s
+                """, (category,))
+                current_lock = cur.fetchone()
+                if current_lock:
+                    self._log_lock_action(category, user_id, "denied", 
+                        f"Lock held by {current_lock[0]} since {current_lock[1]}")
+                return False
                     
         except Exception as e:
             if conn:
@@ -626,20 +622,6 @@ class ProgressStore:
                 self.pool.closeall()
             except:
                 pass
-
-    def _initialize_locks_table(self):
-        """Initialize active locks table"""
-        with self.get_db_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute("""
-                    CREATE TABLE IF NOT EXISTS active_locks (
-                        category TEXT PRIMARY KEY,
-                        user_id TEXT NOT NULL,
-                        timestamp TIMESTAMP NOT NULL,
-                        CONSTRAINT active_locks_unique UNIQUE (category)
-                    )
-                """)
-                conn.commit()
 
 # Add Flask routes
 @app.route('/get_progress', methods=['GET'])
