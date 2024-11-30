@@ -1,6 +1,7 @@
 streamlit==1.24.0
-numpy>=1.22.0
-matplotlib==3.4.3
+numpy>=1.24.0
+matplotlib>=3.5.0
+pillow>=10.0.0
 requests==2.26.0
 flask==2.0.1
 flask-cors==3.0.10
