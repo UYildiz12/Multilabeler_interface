@@ -48,6 +48,9 @@ class ProgressStore:
             self.progress_data = {}
             self.last_labeled_indices = {}
 
+        self.active_users = {}  # Track active users and their last activity
+        self.user_session_timeout = timedelta(hours=2)
+
     def _initialize_pool(self):
         """Initialize or reinitialize the connection pool"""
         try:
@@ -325,9 +328,36 @@ class ProgressStore:
         
         return active_locks
 
-    def acquire_lock(self, user_id: str, category: str) -> bool:
-        """Try to acquire a lock for a category with timeout and logging."""
+    def _cleanup_inactive_sessions(self):
+        """Remove inactive user sessions"""
         now = datetime.now()
+        expired_users = [
+            user for user, last_active in self.active_users.items()
+            if (now - last_active) > self.user_session_timeout
+        ]
+        for user in expired_users:
+            if user in self.active_users:
+                del self.active_users[user]
+                # Release any locks held by expired user
+                self._release_user_locks(user)
+
+    def _release_user_locks(self, user_id: str):
+        """Release all locks held by a user"""
+        expired_categories = [
+            category for category, lock_info in self.locked_categories.items()
+            if lock_info["user"] == user_id
+        ]
+        for category in expired_categories:
+            del self.locked_categories[category]
+            self._log_lock_action(category, user_id, "expired", "User session expired")
+
+    def acquire_lock(self, user_id: str, category: str) -> bool:
+        """Enhanced lock acquisition with user session tracking"""
+        now = datetime.now()
+        self._cleanup_inactive_sessions()
+        
+        # Update user's last activity
+        self.active_users[user_id] = now
         
         # Check if category is locked
         if category in self.locked_categories:
@@ -359,7 +389,13 @@ class ProgressStore:
         return True
 
     def release_lock(self, user_id: str, category: str) -> bool:
-        """Release the lock for a category if owned by user."""
+        """Enhanced lock release with session validation"""
+        if user_id not in self.active_users:
+            return False
+            
+        # Update user's last activity
+        self.active_users[user_id] = datetime.now()
+        
         if category in self.locked_categories:
             lock_info = self.locked_categories[category]
             if lock_info["user"] == user_id:
@@ -562,6 +598,29 @@ def get_lock_history():
         return jsonify(history), 200
     except Exception as e:
         logging.error(f"Error in get_lock_history: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# Add new routes for user session management
+@app.route('/user/heartbeat', methods=['POST'])
+def user_heartbeat():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        if not user_id:
+            return jsonify({"error": "user_id required"}), 400
+            
+        store.active_users[user_id] = datetime.now()
+        return jsonify({"status": "ok"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/user/active', methods=['GET'])
+def get_active_users():
+    try:
+        store._cleanup_inactive_sessions()
+        active_users = list(store.active_users.keys())
+        return jsonify({"active_users": active_users})
+    except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 # Initialize store
