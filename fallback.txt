@@ -40,13 +40,17 @@ class StreamlitImageLabeler:
             st.session_state.label_buffer = []
     
     def initialize_session_state(self):
+        # First page - Username input
         if 'user_id' not in st.session_state or not st.session_state.user_id:
             st.title("Multi-Category Image Labeling Tool")
             username = st.text_input("Enter your name:", key="username_input")
-            if st.button("Start Labeling") and username:
-                st.session_state.user_id = username
-                st.rerun()  
-            st.stop()
+            if st.button("Start Labeling"):
+                if username:  # Only set if user entered something
+                    st.session_state.user_id = username
+                    st.rerun()  # Rerun with username set
+                else:
+                    st.error("Please enter your name to continue")
+            st.stop()  # Stop here until username is entered
             return
 
         # Initialize other session state variables
@@ -182,9 +186,7 @@ class StreamlitImageLabeler:
     def render_category_selection(self):
         st.header("Select a Category to Label")
         self.sync_progress()
-        
-        # Get locked categories with detailed info
-        locked_categories = self.api_service.get_locked_categories()
+        st.session_state.locked_categories = self.api_service.get_locked_categories()
 
         for category in self.CATEGORIES:
             # Fetch progress for the category
@@ -200,21 +202,16 @@ class StreamlitImageLabeler:
             st.progress(progress_pct / 100)
             st.write(f"Labeled: {labeled_images}/{total_images} ({progress_pct:.1f}%)")
 
-            # Display lock status with more detail
-            lock_info = locked_categories.get(category)
-            if lock_info:
-                locked_by = lock_info["user"]
-                locked_since = datetime.fromisoformat(lock_info["locked_since"])
-                duration = datetime.now() - locked_since
-                
+            # Check if category is locked
+            locked_by = st.session_state.locked_categories.get(category)
+            if locked_by:
                 if locked_by == st.session_state.user_id:
-                    st.info(f"You are currently labeling this category")
+                    st.info("Currently labeling")
                 else:
-                    minutes = int(duration.total_seconds() / 60)
-                    st.warning(f"In use by {locked_by} for {minutes} minutes")
+                    st.warning(f"In use by {locked_by}")
                     continue
 
-            # Show button to select category if not locked or locked by current user
+            # Show button to select category
             if st.button(f"Label {category}", key=f"select_{category}"):
                 success = self.select_category(category)
                 if success:
@@ -228,9 +225,7 @@ class StreamlitImageLabeler:
             
             # Switch category button
             if st.button("End Labeling Session"):
-                if self.release_lock():
-                    time.sleep(0.5)  # Give server time to process
-                    st.rerun()
+                self.release_lock()
             
             st.markdown("---")
             
@@ -479,45 +474,17 @@ class StreamlitImageLabeler:
             except Exception as e:
                 st.sidebar.error(f"Error saving progress: {str(e)}")
 
-    def clear_session_state(self):
-        """Clear category-specific session state"""
-        if st.session_state.active_category:
-            category = st.session_state.active_category
-            # Clear category-specific states
-            if category in st.session_state.category_indices:
-                del st.session_state.category_indices[category]
-            if 'current_index' in st.session_state:
-                del st.session_state.current_index
-            if 'radio_value' in st.session_state:
-                del st.session_state.radio_value
-            if 'confidence_value' in st.session_state:
-                del st.session_state.confidence_value
-
     def release_lock(self):
         """Release category lock and save any remaining progress"""
-        if st.session_state.active_category:
-            try:
-                # Save any remaining labels
-                self.save_progress()
-                
-                # Release the lock on the server
-                success = self.api_service.release_lock(
-                    st.session_state.user_id,
-                    st.session_state.active_category
-                )
-                
-                if success:
-                    # Clear all category-specific state
-                    self.clear_session_state()
-                    st.session_state.active_category = None
-                    return True
-                else:
-                    st.error("Failed to release lock. Please try again.")
-                    return False
-            except Exception as e:
-                st.error(f"Error releasing lock: {str(e)}")
-                return False
-        return True
+        # Save any remaining labels before releasing the lock
+        self.save_progress()
+        # Release the lock on the server
+        self.api_service.release_lock(
+            st.session_state.user_id,
+            st.session_state.active_category
+        )
+        st.session_state.active_category = None
+        st.rerun()
 
     def next_image(self):
         if st.session_state.current_index < len(self.images) - 1:
@@ -615,21 +582,15 @@ class StreamlitImageLabeler:
             logging.debug("No active category to reset")
 
     def cleanup(self):
-        """Improved cleanup with explicit user check"""
+        """Release category lock and save progress when the app closes"""
         if st.session_state.get('active_category'):
-            try:
-                # Save any remaining progress
-                self.save_progress()
-                # Release the lock with user verification
-                if self.api_service.release_lock(
-                    st.session_state.user_id,
-                    st.session_state.active_category
-                ):
-                    logging.info(f"Successfully released lock for {st.session_state.active_category}")
-                else:
-                    logging.warning(f"Failed to release lock for {st.session_state.active_category}")
-            except Exception as e:
-                logging.error(f"Error during cleanup: {e}")
+            # Save any remaining progress
+            self.save_progress()
+            # Release the lock
+            self.api_service.release_lock(
+                st.session_state.user_id,
+                st.session_state.active_category
+            )
 
     def update_shared_progress(self, latest_progress: Dict[str, Dict[str, Any]]):
         """Update local progress with latest server data"""

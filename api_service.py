@@ -5,34 +5,73 @@ import logging
 import os
 from datetime import datetime, timedelta
 import backoff  # Add this dependency
+import time
 
 class APIService:
     def __init__(self, base_url: str = None):
-        self.base_url = base_url or os.getenv('API_URL', 'https://multilabeler-interface-d9bb61fef429.herokuapp.com/')
+        # Normalize base URL by removing trailing slash
+        self.base_url = (base_url or os.getenv('API_URL', 'https://multilabeler-interface-d9bb61fef429.herokuapp.com')).rstrip('/')
         self.last_sync_time = datetime.now()
         self.sync_interval = timedelta(seconds=10)  # Reduced from 30 to 10 seconds
-        self.session = requests.Session()  # Use session for connection pooling
-        self.cache_timeout = timedelta(seconds=5)  # Short cache timeout
-        self._progress_cache = {}
-        self._last_cache_update = datetime.min  # Global cache timestamp
-        self._category_cache_update = {}  # Per-category cache timestamps
+        self.session = self._create_session()
+        self._error_count = 0
+        self._max_errors = 3
+        self._reset_time = datetime.now()
 
-    @backoff.on_exception(backoff.expo, requests.exceptions.RequestException, max_tries=3)
+    def _create_session(self):
+        """Create a new session with improved retry configuration"""
+        session = requests.Session()
+        retry_strategy = requests.adapters.Retry(
+            total=5,  # Increased retries
+            backoff_factor=1,  # Increased backoff
+            status_forcelist=[500, 502, 503, 504, 429],  # Added 429 for rate limiting
+            allowed_methods=["HEAD", "GET", "POST"],  # Specify allowed methods
+            raise_on_status=True
+        )
+        adapter = requests.adapters.HTTPAdapter(
+            max_retries=retry_strategy,
+            pool_connections=10,
+            pool_maxsize=10
+        )
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
+        return session
+
+    def _handle_request_error(self, e: Exception):
+        """Central error handling logic"""
+        self._error_count += 1
+        logging.error(f"Request error ({self._error_count}/{self._max_errors}): {str(e)}")
+        
+        # Reset error count after an hour
+        if (datetime.now() - self._reset_time).seconds > 3600:
+            self._error_count = 0
+            self._reset_time = datetime.now()
+        
+        # Recreate session if too many errors
+        if self._error_count >= self._max_errors:
+            logging.warning("Too many errors, recreating session...")
+            self.session.close()
+            self.session = self._create_session()
+            self._error_count = 0
+
+    @backoff.on_exception(
+        backoff.expo, 
+        (requests.exceptions.RequestException, ConnectionError), 
+        max_tries=5,  # Increased retries
+        max_time=30  # Maximum time to try
+    )
     def _make_request(self, method: str, endpoint: str, **kwargs) -> requests.Response:
-        url = f"{self.base_url}/{endpoint}"
-        response = self.session.request(method, url, **kwargs)
-        response.raise_for_status()
-        return response
-
-    def _is_cache_valid(self) -> bool:
-        """Check if global cache is valid"""
-        return datetime.now() - self._last_cache_update < self.cache_timeout
-
-    def _is_category_cache_valid(self, category: str) -> bool:
-        """Check if category specific cache is valid"""
-        if category not in self._category_cache_update:
-            return False
-        return datetime.now() - self._category_cache_update[category] < self.cache_timeout
+        try:
+            kwargs.setdefault('timeout', (5, 15))  # (connect, read) timeouts
+            # Normalize endpoint by removing leading/trailing slashes
+            endpoint = endpoint.strip('/')
+            url = f"{self.base_url}/{endpoint}"
+            response = self.session.request(method, url, **kwargs)
+            response.raise_for_status()
+            return response
+        except Exception as e:
+            self._handle_request_error(e)
+            raise
 
     def acquire_lock(self, user_id: str, category: str) -> bool:
         try:
@@ -40,10 +79,12 @@ class APIService:
                 logging.error("Cannot acquire lock: No user ID provided")
                 return False
                 
+            # Sanitize category name
+            sanitized_category = category.replace('/', '_')
             response = self._make_request(
                 'POST',
                 'acquire_lock',
-                json={"user_id": user_id, "category": category}
+                json={"user_id": user_id, "category": sanitized_category}
             )
             return response.status_code == 200
         except requests.RequestException as e:
@@ -51,82 +92,98 @@ class APIService:
             return False
 
     def release_lock(self, user_id: str, category: str) -> bool:
-        """Release lock for a category"""
+        """Release lock for a category."""
         try:
+            if not user_id or not category:
+                logging.error("user_id and category are required to release lock")
+                return False
+            # Sanitize category name
+            sanitized_category = category.replace('/', '_')
             response = self._make_request(
                 'POST',
                 'release_lock',
-                json={"user_id": user_id, "category": category}
+                json={"user_id": user_id, "category": sanitized_category}
             )
             if response.status_code == 200:
-                # Force immediate sync after release
                 self.sync_all_progress()
-            return response.status_code == 200
+                return True
+            else:
+                logging.error(f"Failed to release lock: {response.text}")
+                return False
         except requests.RequestException as e:
-            st.error(f"Failed to release lock: {str(e)}")
+            logging.error(f"Failed to release lock: {str(e)}")
             return False
 
-    def get_locked_categories(self) -> Dict[str, str]:
-        """Get all currently locked categories and their users"""
+    def get_locked_categories(self) -> Dict[str, Dict[str, Any]]:
+        """Get all currently locked categories with detailed info"""
         try:
             response = self._make_request('GET', 'get_locked_categories')
             if response.status_code == 200:
-                return response.json()
+                locked_categories = response.json()
+                # Sanitize the response
+                return {k.replace('_', '/'): v for k, v in locked_categories.items()}
             return {}
         except requests.RequestException as e:
-            st.error(f"Failed to get locked categories: {str(e)}")
+            logging.error(f"Failed to get locked categories: {str(e)}")
             return {}
 
     def save_progress(self, category: str, index: int, label_data: Dict[str, Any]) -> bool:
         try:
+            # Sanitize category name
+            sanitized_category = category.replace('/', '_')
             payload = {
-                "category": category,
+                "category": sanitized_category,
                 "index": index,
                 **label_data  
             }
             response = self._make_request('POST', 'save_progress', json=payload)
-            if response.status_code == 200:
-                # Invalidate both global and category-specific cache
-                self._last_cache_update = datetime.min
-                if category in self._category_cache_update:
-                    del self._category_cache_update[category]
-                return True
-            return False
+            try:
+                response_data = response.json()  # Attempt to parse JSON
+                logging.debug(f"Save Progress Response: {response_data}")
+            except ValueError:  # Catch non-JSON responses
+                logging.error(f"Non-JSON response received: {response.text}")
+                st.error(f"Unexpected response from server: {response.text}")
+                return False
+            
+            return response.status_code == 200
         except requests.RequestException as e:
             logging.error(f"Failed to save progress: {str(e)}")
             st.error(f"Failed to save progress: {str(e)}")
             return False
 
     def get_all_progress(self) -> Dict[str, Dict[str, Any]]:
-        """Fetch all progress with minimal caching"""
+        """Fetch all progress from the server."""
         try:
-            if not self._is_cache_valid():
-                response = self._make_request('GET', 'get_all_progress')
-                if response.status_code == 200:
-                    self._progress_cache = response.json()
-                    self._last_cache_update = datetime.now()
-            return self._progress_cache
+            response = self._make_request('GET', 'get_all_progress')
+            if response.status_code == 200:
+                return response.json()
+            return {}
         except requests.RequestException as e:
             logging.error(f"Failed to fetch all progress: {str(e)}")
             return {}
 
     def get_progress(self, category: str) -> Dict[str, Any]:
-        try:
-            # Check category-specific cache
-            if self._is_category_cache_valid(category):
-                return self._progress_cache.get(category, {})
-
-            response = self._make_request('GET', 'get_progress', params={"category": category})
-            if response.status_code == 200:
-                data = response.json()
-                self._progress_cache[category] = data
-                self._category_cache_update[category] = datetime.now()
-                return data
-            return {}
-        except requests.RequestException as e:
-            logging.error(f"Failed to get progress: {str(e)}")
-            st.error(f"Failed to get progress: {str(e)}")
-            return {}
+        """Get progress with better error handling"""
+        # Sanitize category name
+        sanitized_category = category.replace('/', '_')
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                response = self._make_request(
+                    'GET',
+                    'get_progress',
+                    params={"category": sanitized_category}
+                )
+                if response.status_code == 200:
+                    return response.json()
+                time.sleep(1)  # Add delay between retries
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    logging.error(f"Final attempt failed for get_progress: {str(e)}")
+                    return {}
+                logging.warning(f"Retrying get_progress ({attempt + 1}/{max_retries})")
+                time.sleep(1)
+        return {}
 
     def upload_progress(self, progress_data: Dict[str, Dict[str, Any]]) -> bool:
         """Upload all progress to the server."""
@@ -138,8 +195,10 @@ class APIService:
             return False
 
     def get_last_labeled_index(self, category: str) -> int:
+        # Sanitize category name
+        sanitized_category = category.replace('/', '_')
         try:
-            response = self._make_request('GET', 'get_last_labeled_index', params={"category": category})
+            response = self._make_request('GET', 'get_last_labeled_index', params={"category": sanitized_category})
             if response.status_code == 200:
                 return response.json().get("last_labeled_index", -1)
             return -1
@@ -162,13 +221,10 @@ class APIService:
             logging.error(f"Failed to sync progress: {str(e)}")
             return {}
 
-    def get_category_stats(self, category: str) -> Dict[str, Any]:
-        """Get accurate statistics from server"""
-        try:
-            response = self._make_request('GET', 'get_category_stats', params={"category": category})
-            if response.status_code == 200:
-                return response.json()
-            return {'total_labeled': 0, 'label_distribution': {}}
-        except requests.RequestException as e:
-            logging.error(f"Failed to get category stats: {str(e)}")
-            return {'total_labeled': 0, 'label_distribution': {}}
+    def __del__(self):
+        """Cleanup session on deletion"""
+        if hasattr(self, 'session'):
+            try:
+                self.session.close()
+            except:
+                pass
