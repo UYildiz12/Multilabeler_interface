@@ -10,4 +10,6 @@ setuptools>=65.5.1
 wheel>=0.38.4
 psycopg2-binary==2.9.9
 backoff==2.2.1
-werkzeug==2.0.3
+werkzeug>=2.0.0
+urllib3>=1.26.0
+Pillow>=8.0.0
