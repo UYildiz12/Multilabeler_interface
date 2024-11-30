@@ -61,6 +61,11 @@ class ProgressStore:
         # Start pool monitor after everything is initialized
         self._pool_monitor = threading.Thread(target=self._monitor_pool, daemon=True)
         self._pool_monitor.start()
+        
+        # Add new attribute for active locks table
+        self._initialize_pool()
+        self.init_db()
+        self._initialize_locks_table()
 
     def _monitor_pool(self):
         """Monitor pool health and recover if needed"""
@@ -432,68 +437,140 @@ class ProgressStore:
             return {'total_labeled': 0, 'label_distribution': {}}
 
     def get_locked_categories(self) -> Dict[str, Dict[str, Any]]:
-        """Return currently locked categories with lock info."""
-        now = datetime.now()
-        active_locks = {}
-        
-        # Filter out expired locks and format response
-        for category, lock_info in self.locked_categories.items():
-            if (now - lock_info["timestamp"]) <= timedelta(minutes=30):
-                active_locks[category] = {
-                    "user": lock_info["user"],
-                    "locked_since": lock_info["timestamp"].isoformat()
-                }
-            else:
-                # Remove expired lock
-                del self.locked_categories[category]
-        
-        return active_locks
+        """Get locked categories from database"""
+        try:
+            with self.get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        DELETE FROM active_locks 
+                        WHERE timestamp < NOW() - INTERVAL '30 minutes'
+                    """)
+                    
+                    cur.execute("""
+                        SELECT category, user_id, timestamp 
+                        FROM active_locks
+                    """)
+                    
+                    locks = {}
+                    for row in cur.fetchall():
+                        category, user_id, timestamp = row
+                        locks[category] = {
+                            "user": user_id,
+                            "locked_since": timestamp.isoformat()
+                        }
+                    conn.commit()
+                    return locks
+        except Exception as e:
+            logging.error(f"Error getting locked categories: {e}")
+            return {}
 
     def acquire_lock(self, user_id: str, category: str) -> bool:
-        """Try to acquire a lock for a category with timeout and logging."""
+        """Acquire lock with database-level locking"""
         now = datetime.now()
-        
-        # Check if category is locked
-        if category in self.locked_categories:
-            lock_info = self.locked_categories[category]
-            # Check if lock is by same user
-            if lock_info["user"] == user_id:
-                # Refresh lock timestamp
-                lock_info["timestamp"] = now
-                self._log_lock_action(category, user_id, "refresh", "User refreshed existing lock")
-                return True
-            # Check if lock has expired
-            if (now - lock_info["timestamp"]) > timedelta(minutes=30):
-                # Lock expired, remove it
-                self._log_lock_action(category, lock_info["user"], "expired", 
-                                    f"Lock expired after {(now - lock_info['timestamp']).seconds} seconds")
-                del self.locked_categories[category]
-            else:
-                # Lock is valid and held by another user
-                self._log_lock_action(category, user_id, "denied", 
-                                    f"Lock held by {lock_info['user']}")
-                return False
-        
-        # Acquire new lock
-        self.locked_categories[category] = {
-            "user": user_id,
-            "timestamp": now
-        }
-        self._log_lock_action(category, user_id, "acquire", "New lock acquired")
-        return True
+        conn = None
+        try:
+            conn = self.get_db_connection()
+            with conn.cursor() as cur:
+                # First try to update existing lock if it's ours or expired
+                cur.execute("""
+                    UPDATE active_locks 
+                    SET timestamp = %s 
+                    WHERE category = %s 
+                    AND (
+                        user_id = %s 
+                        OR timestamp < %s - INTERVAL '30 minutes'
+                    )
+                    RETURNING user_id
+                """, (now, category, user_id, now))
+                
+                result = cur.fetchone()
+                
+                if result:
+                    # We updated an existing lock
+                    conn.commit()
+                    if result[0] == user_id:
+                        self._log_lock_action(category, user_id, "refresh", "Lock refreshed")
+                    else:
+                        self._log_lock_action(category, user_id, "acquire", "Acquired expired lock")
+                    return True
+                
+                # Try to insert new lock
+                try:
+                    cur.execute("""
+                        INSERT INTO active_locks (category, user_id, timestamp)
+                        VALUES (%s, %s, %s)
+                        ON CONFLICT (category) DO NOTHING
+                        RETURNING user_id
+                    """, (category, user_id, now))
+                    
+                    if cur.fetchone():
+                        conn.commit()
+                        self._log_lock_action(category, user_id, "acquire", "New lock acquired")
+                        return True
+                        
+                    # If we get here, lock exists and is active
+                    cur.execute("""
+                        SELECT user_id, timestamp 
+                        FROM active_locks 
+                        WHERE category = %s
+                    """, (category,))
+                    current_lock = cur.fetchone()
+                    if current_lock:
+                        self._log_lock_action(category, user_id, "denied", 
+                            f"Lock held by {current_lock[0]} since {current_lock[1]}")
+                    return False
+                    
+                except psycopg2.IntegrityError:
+                    conn.rollback()
+                    return False
+                    
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            logging.error(f"Error acquiring lock: {e}")
+            return False
+        finally:
+            if conn:
+                self.return_db_connection(conn)
 
     def release_lock(self, user_id: str, category: str) -> bool:
-        """Release the lock for a category if owned by user."""
-        if category in self.locked_categories:
-            lock_info = self.locked_categories[category]
-            if lock_info["user"] == user_id:
-                del self.locked_categories[category]
-                self._log_lock_action(category, user_id, "release", "User released lock")
-                return True
-            else:
-                self._log_lock_action(category, user_id, "release_denied", 
-                                    f"Attempted to release lock held by {lock_info['user']}")
-        return False
+        """Release lock with database-level locking"""
+        conn = None
+        try:
+            conn = self.get_db_connection()
+            with conn.cursor() as cur:
+                cur.execute("""
+                    DELETE FROM active_locks 
+                    WHERE category = %s 
+                    AND user_id = %s
+                    RETURNING user_id
+                """, (category, user_id))
+                
+                if cur.fetchone():
+                    conn.commit()
+                    self._log_lock_action(category, user_id, "release", "Lock released")
+                    return True
+                    
+                # Check if lock exists but is owned by someone else
+                cur.execute("""
+                    SELECT user_id 
+                    FROM active_locks 
+                    WHERE category = %s
+                """, (category,))
+                result = cur.fetchone()
+                if result:
+                    self._log_lock_action(category, user_id, "release_denied", 
+                        f"Attempted to release lock held by {result[0]}")
+                return False
+                
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            logging.error(f"Error releasing lock: {e}")
+            return False
+        finally:
+            if conn:
+                self.return_db_connection(conn)
 
     def _log_lock_action(self, category: str, user_id: str, action: str, reason: str = None):
         """Log lock-related actions to database"""
@@ -549,6 +626,20 @@ class ProgressStore:
                 self.pool.closeall()
             except:
                 pass
+
+    def _initialize_locks_table(self):
+        """Initialize active locks table"""
+        with self.get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS active_locks (
+                        category TEXT PRIMARY KEY,
+                        user_id TEXT NOT NULL,
+                        timestamp TIMESTAMP NOT NULL,
+                        CONSTRAINT active_locks_unique UNIQUE (category)
+                    )
+                """)
+                conn.commit()
 
 # Add Flask routes
 @app.route('/get_progress', methods=['GET'])
