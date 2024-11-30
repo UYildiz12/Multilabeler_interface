@@ -217,13 +217,24 @@ class ProgressStore:
                 
         except Exception as e:
             logging.error(f"Error refreshing state from database: {e}")
-            raise
+            if conn:
+                try:
+                    conn.rollback()  # Rollback any pending transaction
+                except:
+                    pass  # Ignore rollback errors
+            raise  # Re-raise the exception after cleanup
         finally:
             if conn:
-                self.return_db_connection(conn)
+                try:
+                    self.return_db_connection(conn)  # Return connection to pool
+                except Exception as e:
+                    logging.error(f"Error returning connection to pool: {e}")
+                    try:
+                        conn.close()  # Force close if return fails
+                    except:
+                        pass  # Ignore close errors
 
     def update(self, category: str, index: str, data: Dict[str, Any]):
-        """Update progress with connection pooling and error handling"""
         conn = None
         try:
             conn = self.get_db_connection()
@@ -263,7 +274,6 @@ class ProgressStore:
                 self.return_db_connection(conn)
 
     def get_progress(self, category: str) -> Dict[str, Any]:
-        """Get progress with fresh database state"""
         self._refresh_state()
         return self.progress_data.get(category, {})
 
