@@ -9,6 +9,7 @@ from psycopg2 import pool
 import time
 from flask import Flask, request, jsonify
 from typing import Dict, Any, Callable, List
+import threading
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -50,6 +51,11 @@ class ProgressStore:
 
         self.active_users = {}  # Track active users and their last activity
         self.user_session_timeout = timedelta(hours=2)
+        self.db_semaphore = threading.BoundedSemaphore(3)  # Limit concurrent DB operations
+        
+        # Increase minimum and reduce maximum connections
+        self.min_connections = 2
+        self.max_connections = 8
 
     def _initialize_pool(self):
         """Initialize or reinitialize the connection pool"""
@@ -61,8 +67,8 @@ class ProgressStore:
                     pass
             
             self.pool = psycopg2.pool.ThreadedConnectionPool(  # Change to ThreadedConnectionPool
-                minconn=1,
-                maxconn=5,  # Reduced further to prevent connection exhaustion
+                minconn=self.min_connections,
+                maxconn=self.max_connections,  # Reduced further to prevent connection exhaustion
                 dsn=self.database_url,
                 connect_timeout=3
             )
@@ -129,45 +135,56 @@ class ProgressStore:
                 conn.commit()
 
     def get_db_connection(self):
-        """Get database connection with better error handling"""
+        """Get database connection with better error handling and semaphore"""
         if self.is_shutting_down:
             raise Exception("Service is shutting down")
             
-        max_retries = 3
-        retry_count = 0
-        last_error = None
-        
-        while retry_count < max_retries:
-            try:
-                if not self.pool or self.pool.closed:
-                    self._initialize_pool()
-                conn = self.pool.getconn()
-                if conn:
-                    if conn.closed:
-                        self.pool.putconn(conn)
-                        raise Exception("Retrieved closed connection")
-                    return conn
-            except Exception as e:
-                last_error = e
-                retry_count += 1
-                if retry_count < max_retries:
-                    time.sleep(1)
-                    logging.warning(f"Retrying database connection ({retry_count}/{max_retries})")
-                else:
-                    logging.error(f"Failed to get connection after {max_retries} attempts: {last_error}")
-                    raise
+        acquired = False
+        try:
+            # Try to acquire semaphore with timeout
+            acquired = self.db_semaphore.acquire(timeout=5)
+            if not acquired:
+                raise Exception("Timeout waiting for database connection")
+                
+            max_retries = 3
+            retry_count = 0
+            last_error = None
+            
+            while retry_count < max_retries:
+                try:
+                    if not self.pool or self.pool.closed:
+                        self._initialize_pool()
+                    conn = self.pool.getconn()
+                    if conn:
+                        if conn.closed:
+                            self.pool.putconn(conn)
+                            raise Exception("Retrieved closed connection")
+                        return conn
+                except Exception as e:
+                    last_error = e
+                    retry_count += 1
+                    if retry_count < max_retries:
+                        time.sleep(1)
+                        logging.warning(f"Retrying database connection ({retry_count}/{max_retries})")
+                    else:
+                        logging.error(f"Failed to get connection after {max_retries} attempts: {last_error}")
+                        raise
+        finally:
+            if not acquired:
+                self.db_semaphore.release()
 
     def return_db_connection(self, conn):
         """Return connection to pool with error handling"""
-        if conn:
-            try:
-                self.pool.putconn(conn)
-            except Exception as e:
-                logging.error(f"Error returning connection to pool: {e}")
-                try:
-                    conn.close()
-                except:
-                    pass
+        try:
+            if conn:
+                if not conn.closed:
+                    self.pool.putconn(conn)
+                else:
+                    logging.warning("Attempted to return closed connection")
+        except Exception as e:
+            logging.error(f"Error returning connection to pool: {e}")
+        finally:
+            self.db_semaphore.release()
 
     def __del__(self):
         """Ensure all connections are closed on deletion"""
@@ -266,9 +283,30 @@ class ProgressStore:
                 self.return_db_connection(conn)
 
     def get_progress(self, category: str) -> Dict[str, Any]:
-        """Get progress with fresh database state"""
-        self._refresh_state()
-        return self.progress_data.get(category, {})
+        """Get progress with connection caching"""
+        cache_key = f"progress_{category}"
+        cache_timeout = 5  # seconds
+        
+        # Check if we have cached data
+        if hasattr(self, '_cache') and cache_key in self._cache:
+            cached_data, cache_time = self._cache[cache_key]
+            if (datetime.now() - cache_time).seconds < cache_timeout:
+                return cached_data
+        
+        # If no cache or expired, fetch from database
+        try:
+            self._refresh_state()
+            result = self.progress_data.get(category, {})
+            
+            # Cache the result
+            if not hasattr(self, '_cache'):
+                self._cache = {}
+            self._cache[cache_key] = (result, datetime.now())
+            
+            return result
+        except Exception as e:
+            logging.error(f"Error in get_progress: {e}")
+            return {}
 
     def get_last_labeled_index(self, category: str) -> int:
         """Get last labeled index with fresh database state"""
