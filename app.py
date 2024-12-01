@@ -262,19 +262,10 @@ class StreamlitImageLabeler:
         with st.sidebar:
             st.header(f"Category: {st.session_state.active_category}")
             
-            # Enhanced end session handling
+            # Switch category button
             if st.button("End Labeling Session"):
-                if st.session_state.active_category:
-                    # Save any pending progress first
-                    self.save_progress()
-                    # Release the lock with retry
-                    for _ in range(3):  # Try up to 3 times
-                        if self.release_lock():
-                            break
-                        time.sleep(1)
-                    # Clear session state after successful release
-                    self.clear_session_state()
-                    st.session_state.active_category = None
+                if self.release_lock():
+                    time.sleep(0.5)  # Give server time to process
                     st.rerun()
             
             st.markdown("---")
@@ -558,56 +549,25 @@ class StreamlitImageLabeler:
                 del st.session_state.confidence_value
 
     def release_lock(self):
-        """Enhanced release_lock with better error handling and validation"""
+        """Enhanced release_lock with cleanup"""
         if st.session_state.active_category:
             try:
-                # Save any pending progress
                 self.save_progress()
+                success = self.api_service.release_lock(
+                    st.session_state.user_id,
+                    st.session_state.active_category
+                )
                 
-                category = st.session_state.active_category
-                logging.info(f"Attempting to release lock for category: {category}")
-                
-                # Get current lock status
-                locked_categories = self.api_service.get_locked_categories()
-                logging.info(f"Current locked categories: {locked_categories}")
-                
-                if category not in locked_categories:
-                    logging.info(f"No active lock found for {category}")
+                if success:
+                    self.clear_session_state()
+                    st.session_state.active_category = None
+                    self._force_cleanup()  # Force cleanup when releasing lock
                     return True
-                
-                current_lock = locked_categories.get(category)
-                if current_lock and current_lock["user"] != st.session_state.user_id:
-                    logging.warning(f"Lock for {category} is held by {current_lock['user']}, not {st.session_state.user_id}")
+                else:
+                    st.error("Failed to release lock. Please try again.")
                     return False
-                
-                # Attempt to release lock with multiple retries
-                max_retries = 3
-                for attempt in range(max_retries):
-                    try:
-                        logging.info(f"Release attempt {attempt + 1}/{max_retries}")
-                        success = self.api_service.release_lock(
-                            str(st.session_state.user_id),  # Ensure user_id is string
-                            category
-                        )
-                        
-                        if success:
-                            logging.info(f"Successfully released lock for {category}")
-                            self.clear_session_state()
-                            self._force_cleanup()
-                            return True
-                        
-                        time.sleep(1)  # Wait before retry
-                        
-                    except Exception as e:
-                        logging.error(f"Error on release attempt {attempt + 1}: {str(e)}")
-                        if attempt < max_retries - 1:
-                            time.sleep(2 ** attempt)  # Exponential backoff
-                        
-                logging.error(f"Failed to release lock after {max_retries} attempts")
-                return False
-                
             except Exception as e:
-                logging.error(f"Error in release_lock: {str(e)}", exc_info=True)
+                st.error(f"Error releasing lock: {str(e)}")
                 return False
         return True
 
@@ -707,25 +667,27 @@ class StreamlitImageLabeler:
             logging.debug("No active category to reset")
 
     def cleanup(self):
-        """Enhanced cleanup with better lock release handling"""
+        """Enhanced cleanup with memory management"""
         try:
-            # Save any pending progress
-            if hasattr(st.session_state, 'label_buffer') and st.session_state.label_buffer:
-                self.save_progress()
-            
-            # Release any held locks with retry
+            # Save progress and release locks
             if st.session_state.get('active_category'):
-                for _ in range(3):  # Try up to 3 times
-                    if self.release_lock():
-                        break
-                    time.sleep(1)
+                self.save_progress()
+                self.api_service.release_lock(
+                    st.session_state.user_id,
+                    st.session_state.active_category
+                )
             
-            # Clear category-specific states
-            self.clear_session_state()
-            
-            # Clear image cache and other resources
-            self.image_cache.clear()
+            # Clear matplotlib figures
             plt.close('all')
+            
+            # Clear image cache
+            self.image_cache.clear()
+            
+            # Clear large objects from session state
+            keys_to_clear = ['large_temp_data', 'image_cache']
+            for key in keys_to_clear:
+                if key in st.session_state:
+                    del st.session_state[key]
             
             # Force garbage collection
             gc.collect()
@@ -766,14 +728,6 @@ class StreamlitImageLabeler:
 def main():
     if "loading_state" not in st.session_state:
         st.session_state.loading_state = "not_started"
-    
-    # Add session exit handler
-    def handle_session_exit():
-        if 'labeler' in locals() and hasattr(st.session_state, 'active_category'):
-            labeler.cleanup()
-
-    # Register cleanup handler
-    atexit.register(handle_session_exit)
     
     try:
         if st.session_state.loading_state == "not_started":

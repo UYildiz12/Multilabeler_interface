@@ -256,16 +256,6 @@ class ProgressStore:
                 except Exception as e:
                     logging.error(f"Error creating locks table: {e}")
                     conn.rollback()
-                try:
-                    # Add index for lock timestamps
-                    cur.execute("""
-                        CREATE INDEX IF NOT EXISTS idx_active_locks_timestamp 
-                        ON active_locks(timestamp)
-                    """)
-                    conn.commit()
-                except Exception as e:
-                    logging.error(f"Error creating index: {e}")
-                    conn.rollback()
 
     def get_db_connection(self):
         """Get database connection with better error handling"""
@@ -460,8 +450,7 @@ class ProgressStore:
             return {'total_labeled': 0, 'label_distribution': {}}
 
     def get_locked_categories(self) -> Dict[str, Dict[str, Any]]:
-        """Get locked categories with stale lock cleanup"""
-        self._clean_stale_locks()  # Clean stale locks before returning
+        """Get locked categories from database"""
         try:
             with self.get_db_connection() as conn:
                 with conn.cursor() as cur:
@@ -634,31 +623,6 @@ class ProgressStore:
             except:
                 pass
 
-    def _clean_stale_locks(self):
-        """Clean up stale locks periodically"""
-        try:
-            with self.get_db_connection() as conn:
-                with conn.cursor() as cur:
-                    # Remove locks older than 30 minutes
-                    cur.execute("""
-                        DELETE FROM active_locks 
-                        WHERE timestamp < NOW() - INTERVAL '30 minutes'
-                        RETURNING category, user_id
-                    """)
-                    stale_locks = cur.fetchall()
-                    if stale_locks:
-                        logging.info(f"Cleaned {len(stale_locks)} stale locks")
-                        for category, user_id in stale_locks:
-                            self._log_lock_action(
-                                category, 
-                                user_id, 
-                                "auto_release", 
-                                "Lock automatically released due to timeout"
-                            )
-                    conn.commit()
-        except Exception as e:
-            logging.error(f"Error cleaning stale locks: {e}")
-
 # Add Flask routes
 @app.route('/get_progress', methods=['GET'])
 def get_progress():
@@ -776,37 +740,16 @@ def acquire_lock():
 
 @app.route('/release_lock', methods=['POST'])
 def release_lock():
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No data provided"}), 400
-            
-        user_id = data.get('user_id')
-        category = data.get('category')
-        
-        if not user_id or not category:
-            return jsonify({
-                "error": "Missing required fields",
-                "details": {
-                    "user_id": "missing" if not user_id else "present",
-                    "category": "missing" if not category else "present"
-                }
-            }), 400
-
-        # Convert sanitized category back to original format if needed
-        category = category.replace('_', '/')
-            
-        success = store.release_lock(user_id, category)
-        if success:
-            return jsonify({"status": "lock released"}), 200
-        else:
-            return jsonify({
-                "error": "failed to release lock",
-                "details": "Lock may be held by another user or already released"
-            }), 400
-    except Exception as e:
-        logging.error(f"Error in release_lock endpoint: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+    data = request.get_json()
+    user_id = data.get('user_id')
+    category = data.get('category')
+    if not user_id or not category:
+        return jsonify({"error": "user_id and category are required"}), 400
+    success = store.release_lock(user_id, category)
+    if success:
+        return jsonify({"status": "lock released"}), 200
+    else:
+        return jsonify({"error": "failed to release lock"}), 400
 
 @app.route('/upload_progress', methods=['POST'])
 def upload_progress():
