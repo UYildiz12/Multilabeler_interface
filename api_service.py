@@ -6,6 +6,7 @@ import os
 from datetime import datetime, timedelta
 import backoff  # Add this dependency
 import time
+from weakref import WeakValueDictionary  # Add this import
 
 class APIService:
     def __init__(self, base_url: str = None):
@@ -17,6 +18,8 @@ class APIService:
         self._error_count = 0
         self._max_errors = 3
         self._reset_time = datetime.now()
+        self._response_cache = WeakValueDictionary()  # Use weak references for caching
+        self._cache_timeout = timedelta(minutes=5)
 
     def _create_session(self):
         """Create a new session with improved retry configuration"""
@@ -62,16 +65,45 @@ class APIService:
     )
     def _make_request(self, method: str, endpoint: str, **kwargs) -> requests.Response:
         try:
+            # Clear old cache entries
+            self._clear_old_cache()
+            
+            # Generate cache key
+            cache_key = f"{method}:{endpoint}:{str(kwargs)}"
+            
+            # Check cache
+            if method == 'GET' and cache_key in self._response_cache:
+                return self._response_cache[cache_key]
+            
             kwargs.setdefault('timeout', (5, 15))  # (connect, read) timeouts
             # Normalize endpoint by removing leading/trailing slashes
             endpoint = endpoint.strip('/')
             url = f"{self.base_url}/{endpoint}"
             response = self.session.request(method, url, **kwargs)
             response.raise_for_status()
+            
+            # Cache GET responses
+            if method == 'GET':
+                self._response_cache[cache_key] = response
+            
             return response
         except Exception as e:
             self._handle_request_error(e)
             raise
+
+    def _clear_old_cache(self):
+        """Clear expired cache entries"""
+        try:
+            current_time = datetime.now()
+            expired_keys = [
+                key for key, value in self._response_cache.items()
+                if hasattr(value, '_cached_time') and 
+                current_time - value._cached_time > self._cache_timeout
+            ]
+            for key in expired_keys:
+                del self._response_cache[key]
+        except:
+            self._response_cache.clear()
 
     @backoff.on_exception(
         backoff.expo,
@@ -249,9 +281,10 @@ class APIService:
             return {}
 
     def __del__(self):
-        """Cleanup session on deletion"""
-        if hasattr(self, 'session'):
-            try:
+        """Enhanced cleanup"""
+        try:
+            self._response_cache.clear()
+            if hasattr(self, 'session'):
                 self.session.close()
-            except:
-                pass
+        except:
+            pass

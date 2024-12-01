@@ -44,6 +44,11 @@ class StreamlitImageLabeler:
 
         if 'label_buffer' not in st.session_state:
             st.session_state.label_buffer = []
+
+        # Add memory monitoring
+        self.last_memory_check = datetime.now()
+        self.memory_check_interval = timedelta(minutes=1)
+        self.memory_threshold = 80  # Percentage
     
     @property
     def images(self):
@@ -51,29 +56,53 @@ class StreamlitImageLabeler:
         return self._images
 
     def _check_memory_usage(self):
-        """Monitor memory usage and force cleanup if needed"""
-        process = psutil.Process()
-        memory_percent = process.memory_percent()
-        
-        if memory_percent > 80:  # If using more than 80% of available memory
-            self._force_cleanup()
-            return True
+        """Enhanced memory monitoring"""
+        current_time = datetime.now()
+        if current_time - self.last_memory_check > self.memory_check_interval:
+            try:
+                process = psutil.Process()
+                memory_percent = process.memory_percent()
+                
+                if memory_percent > self.memory_threshold:
+                    self._force_cleanup()
+                    gc.collect()
+                    return True
+                
+                # Log memory usage periodically
+                if memory_percent > 70:  # Warning threshold
+                    logging.warning(f"High memory usage: {memory_percent:.1f}%")
+                    
+                self.last_memory_check = current_time
+            except Exception as e:
+                logging.error(f"Memory check error: {e}")
         return False
 
     def _force_cleanup(self):
-        """Force cleanup of memory intensive objects"""
-        # Clear matplotlib figures
-        plt.close('all')
-        
-        # Clear image cache
-        self.image_cache.clear()
-        
-        # Clear any large objects in session state
-        if 'large_temp_data' in st.session_state:
-            del st.session_state.large_temp_data
-        
-        # Force garbage collection
-        gc.collect()
+        """Enhanced cleanup procedure"""
+        try:
+            # Clear matplotlib resources
+            plt.close('all')
+            
+            # Clear image cache
+            self.image_cache.clear()
+            self._current_image = None
+            
+            # Clear large session state objects
+            large_keys = ['large_temp_data', 'image_cache', '_current_image']
+            for key in large_keys:
+                if key in st.session_state:
+                    del st.session_state[key]
+            
+            # Force garbage collection cycles
+            for _ in range(3):  # Multiple collection cycles
+                gc.collect()
+                
+            # Log cleanup
+            process = psutil.Process()
+            logging.info(f"Memory after cleanup: {process.memory_percent():.1f}%")
+            
+        except Exception as e:
+            logging.error(f"Cleanup error: {e}")
 
     def initialize_session_state(self):
         if 'user_id' not in st.session_state or not st.session_state.user_id:
@@ -322,32 +351,35 @@ class StreamlitImageLabeler:
                     st.warning("No category selected")
 
     def render_image(self):
-        st.subheader(f"Image {st.session_state.current_index + 1}/{len(self.images)}")
-        
+        """Optimized image rendering"""
         try:
-            # Close any existing figures first
+            # Clear previous image
+            if hasattr(self, '_current_image'):
+                del self._current_image
+            
+            # Close any existing figures
             plt.close('all')
             
-            fig, ax = plt.subplots(figsize=(8, 8))
-            ax.imshow(self.images[st.session_state.current_index], cmap='gray')
-            ax.axis('off')
-            st.pyplot(fig)
+            # Create figure with tight layout
+            fig = plt.figure(figsize=(8, 8), tight_layout=True)
+            ax = fig.add_subplot(111)
             
-            # Cleanup immediately after displaying
+            # Load and display image
+            img = self._images[st.session_state.current_index]
+            ax.imshow(img, cmap='gray')
+            ax.axis('off')
+            
+            # Display and immediately cleanup
+            st.pyplot(fig)
             plt.close(fig)
             
-            # Check memory usage after rendering
+            # Check memory usage
             self._check_memory_usage()
             
-            # Periodic garbage collection
-            current_time = datetime.now()
-            if current_time - self.last_gc > self.gc_interval:
-                gc.collect()
-                self.last_gc = current_time
-                
         except Exception as e:
-            st.error(f"Error displaying image: {str(e)}")
+            logging.error(f"Image rendering error: {e}")
             self._force_cleanup()
+            st.error("Error displaying image")
 
     def render_controls(self):
         st.subheader("Labeling Controls")
@@ -754,3 +786,11 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# Add cleanup on module exit
+import atexit
+def module_cleanup():
+    plt.close('all')
+    gc.collect()
+
+atexit.register(module_cleanup)
