@@ -262,10 +262,19 @@ class StreamlitImageLabeler:
         with st.sidebar:
             st.header(f"Category: {st.session_state.active_category}")
             
-            # Switch category button
+            # Enhanced end session handling
             if st.button("End Labeling Session"):
-                if self.release_lock():
-                    time.sleep(0.5)  # Give server time to process
+                if st.session_state.active_category:
+                    # Save any pending progress first
+                    self.save_progress()
+                    # Release the lock with retry
+                    for _ in range(3):  # Try up to 3 times
+                        if self.release_lock():
+                            break
+                        time.sleep(1)
+                    # Clear session state after successful release
+                    self.clear_session_state()
+                    st.session_state.active_category = None
                     st.rerun()
             
             st.markdown("---")
@@ -549,25 +558,34 @@ class StreamlitImageLabeler:
                 del st.session_state.confidence_value
 
     def release_lock(self):
-        """Enhanced release_lock with cleanup"""
+        """Enhanced release_lock with better error handling and validation"""
         if st.session_state.active_category:
             try:
+                # Save any pending progress
                 self.save_progress()
+                
+                # Attempt to release lock
                 success = self.api_service.release_lock(
                     st.session_state.user_id,
                     st.session_state.active_category
                 )
                 
                 if success:
-                    self.clear_session_state()
-                    st.session_state.active_category = None
-                    self._force_cleanup()  # Force cleanup when releasing lock
-                    return True
+                    # Verify lock was actually released
+                    locked_categories = self.api_service.get_locked_categories()
+                    if st.session_state.active_category not in locked_categories:
+                        logging.info(f"Successfully released lock for {st.session_state.active_category}")
+                        self.clear_session_state()
+                        self._force_cleanup()
+                        return True
+                    else:
+                        logging.error("Lock release reported success but category is still locked")
+                        return False
                 else:
-                    st.error("Failed to release lock. Please try again.")
+                    logging.error("Failed to release lock")
                     return False
             except Exception as e:
-                st.error(f"Error releasing lock: {str(e)}")
+                logging.error(f"Error releasing lock: {str(e)}")
                 return False
         return True
 
@@ -667,27 +685,25 @@ class StreamlitImageLabeler:
             logging.debug("No active category to reset")
 
     def cleanup(self):
-        """Enhanced cleanup with memory management"""
+        """Enhanced cleanup with better lock release handling"""
         try:
-            # Save progress and release locks
-            if st.session_state.get('active_category'):
+            # Save any pending progress
+            if hasattr(st.session_state, 'label_buffer') and st.session_state.label_buffer:
                 self.save_progress()
-                self.api_service.release_lock(
-                    st.session_state.user_id,
-                    st.session_state.active_category
-                )
             
-            # Clear matplotlib figures
-            plt.close('all')
+            # Release any held locks with retry
+            if st.session_state.get('active_category'):
+                for _ in range(3):  # Try up to 3 times
+                    if self.release_lock():
+                        break
+                    time.sleep(1)
             
-            # Clear image cache
+            # Clear category-specific states
+            self.clear_session_state()
+            
+            # Clear image cache and other resources
             self.image_cache.clear()
-            
-            # Clear large objects from session state
-            keys_to_clear = ['large_temp_data', 'image_cache']
-            for key in keys_to_clear:
-                if key in st.session_state:
-                    del st.session_state[key]
+            plt.close('all')
             
             # Force garbage collection
             gc.collect()
@@ -728,6 +744,14 @@ class StreamlitImageLabeler:
 def main():
     if "loading_state" not in st.session_state:
         st.session_state.loading_state = "not_started"
+    
+    # Add session exit handler
+    def handle_session_exit():
+        if 'labeler' in locals() and hasattr(st.session_state, 'active_category'):
+            labeler.cleanup()
+
+    # Register cleanup handler
+    atexit.register(handle_session_exit)
     
     try:
         if st.session_state.loading_state == "not_started":

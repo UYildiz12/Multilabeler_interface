@@ -256,6 +256,16 @@ class ProgressStore:
                 except Exception as e:
                     logging.error(f"Error creating locks table: {e}")
                     conn.rollback()
+                try:
+                    # Add index for lock timestamps
+                    cur.execute("""
+                        CREATE INDEX IF NOT EXISTS idx_active_locks_timestamp 
+                        ON active_locks(timestamp)
+                    """)
+                    conn.commit()
+                except Exception as e:
+                    logging.error(f"Error creating index: {e}")
+                    conn.rollback()
 
     def get_db_connection(self):
         """Get database connection with better error handling"""
@@ -450,7 +460,8 @@ class ProgressStore:
             return {'total_labeled': 0, 'label_distribution': {}}
 
     def get_locked_categories(self) -> Dict[str, Dict[str, Any]]:
-        """Get locked categories from database"""
+        """Get locked categories with stale lock cleanup"""
+        self._clean_stale_locks()  # Clean stale locks before returning
         try:
             with self.get_db_connection() as conn:
                 with conn.cursor() as cur:
@@ -622,6 +633,31 @@ class ProgressStore:
                 self.pool.closeall()
             except:
                 pass
+
+    def _clean_stale_locks(self):
+        """Clean up stale locks periodically"""
+        try:
+            with self.get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    # Remove locks older than 30 minutes
+                    cur.execute("""
+                        DELETE FROM active_locks 
+                        WHERE timestamp < NOW() - INTERVAL '30 minutes'
+                        RETURNING category, user_id
+                    """)
+                    stale_locks = cur.fetchall()
+                    if stale_locks:
+                        logging.info(f"Cleaned {len(stale_locks)} stale locks")
+                        for category, user_id in stale_locks:
+                            self._log_lock_action(
+                                category, 
+                                user_id, 
+                                "auto_release", 
+                                "Lock automatically released due to timeout"
+                            )
+                    conn.commit()
+        except Exception as e:
+            logging.error(f"Error cleaning stale locks: {e}")
 
 # Add Flask routes
 @app.route('/get_progress', methods=['GET'])
