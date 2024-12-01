@@ -76,37 +76,51 @@ class StreamlitImageLabeler:
         gc.collect()
 
     def initialize_session_state(self):
-        if 'user_id' not in st.session_state or not st.session_state.user_id:
+        # Add validation for existing user_id
+        if 'user_id' in st.session_state and st.session_state.user_id:
+            # Skip login if user already has valid ID
+            pass
+        else:
             st.title("Multi-Category Image Labeling Tool")
             username = st.text_input("Enter your name:", key="username_input")
             if st.button("Start Labeling") and username:
                 st.session_state.user_id = username
-                st.rerun()  
+                # Initialize other required session state variables
+                st.session_state.active_category = None
+                st.session_state.labels = {}
+                st.session_state.locked_categories = {}
+                st.session_state.show_reset_confirm = False
+                st.session_state.category_progress = {
+                    category: {"last_labeled_index": -1}
+                    for category in self.CATEGORIES
+                }
+                st.session_state.category_indices = {
+                    category: 0 for category in self.CATEGORIES
+                }
+                st.rerun()
             st.stop()
             return
 
-        # Initialize other session state variables
+        # Initialize other session states only if they don't exist
         if 'active_category' not in st.session_state:
             st.session_state.active_category = None
         if 'labels' not in st.session_state:
             st.session_state.labels = {}
         if 'locked_categories' not in st.session_state:
             st.session_state.locked_categories = {}
-        if 'show_reset_confirm' not in st.session_state:  # Add this line
+        if 'show_reset_confirm' not in st.session_state:
             st.session_state.show_reset_confirm = False
         if 'category_progress' not in st.session_state:
             st.session_state.category_progress = {
                 category: {"last_labeled_index": -1}
                 for category in self.CATEGORIES
             }
-
-        # Initialize or update category indices
         if 'category_indices' not in st.session_state:
             st.session_state.category_indices = {
                 category: 0 for category in self.CATEGORIES
             }
 
-        # Initialize labels with server data
+        # Only initialize labels if they don't exist
         if 'labels' not in st.session_state:
             all_progress = self.api_service.get_all_progress()
             st.session_state.labels = {category: [] for category in self.CATEGORIES}
