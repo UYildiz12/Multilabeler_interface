@@ -119,36 +119,62 @@ class APIService:
         max_time=30
     )
     def release_lock(self, user_id: str, category: str) -> bool:
+        """Release lock with improved error handling and category sanitization"""
         try:
             if not user_id or not category:
-                logging.error("user_id and category are required to release lock")
+                logging.error("Cannot release lock: Missing user_id or category")
                 return False
-                
+
+            # Ensure consistent sanitization of category name
             sanitized_category = category.replace('/', '_')
+
+            # First verify if we hold the lock
+            locked_categories = self.get_locked_categories()
+            if sanitized_category not in locked_categories:
+                logging.warning(f"No lock found for category {category}")
+                return True  # Consider it success if there's no lock
+            
+            lock_info = locked_categories[sanitized_category]
+            if lock_info["user"] != user_id:
+                logging.warning(f"Lock for {category} is held by {lock_info['user']}, not {user_id}")
+                return False
+
             response = self._make_request(
                 'POST',
                 'release_lock',
-                json={"user_id": user_id, "category": sanitized_category}
+                json={
+                    "user_id": user_id,
+                    "category": sanitized_category
+                },
+                timeout=10  # Increased timeout
             )
-            
+
             if response.status_code == 200:
                 # Verify lock was released
-                locked_categories = self.get_locked_categories()
-                return category not in locked_categories
-            return False
+                updated_locks = self.get_locked_categories()
+                return sanitized_category not in updated_locks
             
+            logging.error(f"Failed to release lock: Server returned {response.status_code}")
+            return False
+
         except requests.RequestException as e:
-            logging.error(f"Failed to release lock: {str(e)}")
+            logging.error(f"Network error releasing lock: {str(e)}")
+            return False
+        except Exception as e:
+            logging.error(f"Unexpected error releasing lock: {str(e)}")
             return False
 
     def get_locked_categories(self) -> Dict[str, Dict[str, Any]]:
-        """Get all currently locked categories with detailed info"""
+        """Get locked categories with improved sanitization handling"""
         try:
             response = self._make_request('GET', 'get_locked_categories')
             if response.status_code == 200:
                 locked_categories = response.json()
-                # Sanitize the response
-                return {k.replace('_', '/'): v for k, v in locked_categories.items()}
+                # Handle both sanitized and unsanitized category names
+                return {
+                    k.replace('_', '/'): v 
+                    for k, v in locked_categories.items()
+                }
             return {}
         except requests.RequestException as e:
             logging.error(f"Failed to get locked categories: {str(e)}")

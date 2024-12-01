@@ -740,16 +740,37 @@ def acquire_lock():
 
 @app.route('/release_lock', methods=['POST'])
 def release_lock():
-    data = request.get_json()
-    user_id = data.get('user_id')
-    category = data.get('category')
-    if not user_id or not category:
-        return jsonify({"error": "user_id and category are required"}), 400
-    success = store.release_lock(user_id, category)
-    if success:
-        return jsonify({"status": "lock released"}), 200
-    else:
-        return jsonify({"error": "failed to release lock"}), 400
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+            
+        user_id = data.get('user_id')
+        category = data.get('category')
+        
+        if not user_id or not category:
+            return jsonify({
+                "error": "Missing required fields",
+                "details": {
+                    "user_id": "missing" if not user_id else "present",
+                    "category": "missing" if not category else "present"
+                }
+            }), 400
+
+        # Convert sanitized category back to original format if needed
+        category = category.replace('_', '/')
+            
+        success = store.release_lock(user_id, category)
+        if success:
+            return jsonify({"status": "lock released"}), 200
+        else:
+            return jsonify({
+                "error": "failed to release lock",
+                "details": "Lock may be held by another user or already released"
+            }), 400
+    except Exception as e:
+        logging.error(f"Error in release_lock endpoint: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/upload_progress', methods=['POST'])
 def upload_progress():
