@@ -15,6 +15,9 @@ from dataloader import DataLoader
 import atexit
 import logging
 import uuid
+import gc
+from weakref import WeakValueDictionary
+import psutil
 
 class StreamlitImageLabeler:
     CATEGORIES = [
@@ -25,12 +28,15 @@ class StreamlitImageLabeler:
     ]
 
     def __init__(self, images):
-        self.images = images
+        self.image_cache = WeakValueDictionary()  # Use weak references for image cache
+        self._images = images  # Store original image list
         self.api_service = APIService()
         self.sync_lock = Lock()
         
         self.sync_interval = timedelta(seconds=2)
         self.last_sync = datetime.now()
+        self.last_gc = datetime.now()
+        self.gc_interval = timedelta(minutes=5)  # Run GC every 5 minutes
         
         atexit.register(self.cleanup)
         
@@ -39,6 +45,36 @@ class StreamlitImageLabeler:
         if 'label_buffer' not in st.session_state:
             st.session_state.label_buffer = []
     
+    @property
+    def images(self):
+        """Lazy load images to prevent memory issues"""
+        return self._images
+
+    def _check_memory_usage(self):
+        """Monitor memory usage and force cleanup if needed"""
+        process = psutil.Process()
+        memory_percent = process.memory_percent()
+        
+        if memory_percent > 80:  # If using more than 80% of available memory
+            self._force_cleanup()
+            return True
+        return False
+
+    def _force_cleanup(self):
+        """Force cleanup of memory intensive objects"""
+        # Clear matplotlib figures
+        plt.close('all')
+        
+        # Clear image cache
+        self.image_cache.clear()
+        
+        # Clear any large objects in session state
+        if 'large_temp_data' in st.session_state:
+            del st.session_state.large_temp_data
+        
+        # Force garbage collection
+        gc.collect()
+
     def initialize_session_state(self):
         if 'user_id' not in st.session_state or not st.session_state.user_id:
             st.title("Multi-Category Image Labeling Tool")
@@ -288,11 +324,30 @@ class StreamlitImageLabeler:
     def render_image(self):
         st.subheader(f"Image {st.session_state.current_index + 1}/{len(self.images)}")
         
-        fig, ax = plt.subplots(figsize=(8, 8))
-        ax.imshow(self.images[st.session_state.current_index], cmap='gray')
-        ax.axis('off')
-        st.pyplot(fig)
-        plt.close()
+        try:
+            # Close any existing figures first
+            plt.close('all')
+            
+            fig, ax = plt.subplots(figsize=(8, 8))
+            ax.imshow(self.images[st.session_state.current_index], cmap='gray')
+            ax.axis('off')
+            st.pyplot(fig)
+            
+            # Cleanup immediately after displaying
+            plt.close(fig)
+            
+            # Check memory usage after rendering
+            self._check_memory_usage()
+            
+            # Periodic garbage collection
+            current_time = datetime.now()
+            if current_time - self.last_gc > self.gc_interval:
+                gc.collect()
+                self.last_gc = current_time
+                
+        except Exception as e:
+            st.error(f"Error displaying image: {str(e)}")
+            self._force_cleanup()
 
     def render_controls(self):
         st.subheader("Labeling Controls")
@@ -494,22 +549,19 @@ class StreamlitImageLabeler:
                 del st.session_state.confidence_value
 
     def release_lock(self):
-        """Release category lock and save any remaining progress"""
+        """Enhanced release_lock with cleanup"""
         if st.session_state.active_category:
             try:
-                # Save any remaining labels
                 self.save_progress()
-                
-                # Release the lock on the server
                 success = self.api_service.release_lock(
                     st.session_state.user_id,
                     st.session_state.active_category
                 )
                 
                 if success:
-                    # Clear all category-specific state
                     self.clear_session_state()
                     st.session_state.active_category = None
+                    self._force_cleanup()  # Force cleanup when releasing lock
                     return True
                 else:
                     st.error("Failed to release lock. Please try again.")
@@ -615,21 +667,33 @@ class StreamlitImageLabeler:
             logging.debug("No active category to reset")
 
     def cleanup(self):
-        """Improved cleanup with explicit user check"""
-        if st.session_state.get('active_category'):
-            try:
-                # Save any remaining progress
+        """Enhanced cleanup with memory management"""
+        try:
+            # Save progress and release locks
+            if st.session_state.get('active_category'):
                 self.save_progress()
-                # Release the lock with user verification
-                if self.api_service.release_lock(
+                self.api_service.release_lock(
                     st.session_state.user_id,
                     st.session_state.active_category
-                ):
-                    logging.info(f"Successfully released lock for {st.session_state.active_category}")
-                else:
-                    logging.warning(f"Failed to release lock for {st.session_state.active_category}")
-            except Exception as e:
-                logging.error(f"Error during cleanup: {e}")
+                )
+            
+            # Clear matplotlib figures
+            plt.close('all')
+            
+            # Clear image cache
+            self.image_cache.clear()
+            
+            # Clear large objects from session state
+            keys_to_clear = ['large_temp_data', 'image_cache']
+            for key in keys_to_clear:
+                if key in st.session_state:
+                    del st.session_state[key]
+            
+            # Force garbage collection
+            gc.collect()
+            
+        except Exception as e:
+            logging.error(f"Error during cleanup: {e}")
 
     def update_shared_progress(self, latest_progress: Dict[str, Dict[str, Any]]):
         """Update local progress with latest server data"""
@@ -665,20 +729,28 @@ def main():
     if "loading_state" not in st.session_state:
         st.session_state.loading_state = "not_started"
     
-    if st.session_state.loading_state == "not_started":
-        with st.spinner("Loading data and previous progress..."):
-            images = DataLoader.load_data(include_train=True)
-            if images is not None:
-                st.session_state.images = images
-                st.session_state.loading_state = "completed"
-            else:
-                st.error("Failed to load data. Please refresh the page to try again.")
-                return
-    
-    
-    if st.session_state.loading_state == "completed":
-        labeler = StreamlitImageLabeler(st.session_state.images)
-        labeler.run()
+    try:
+        if st.session_state.loading_state == "not_started":
+            with st.spinner("Loading data and previous progress..."):
+                images = DataLoader.load_data(include_train=True)
+                if images is not None:
+                    st.session_state.images = images
+                    st.session_state.loading_state = "completed"
+                    gc.collect()  # Force garbage collection after loading
+                else:
+                    st.error("Failed to load data. Please refresh the page to try again.")
+                    return
+        
+        if st.session_state.loading_state == "completed":
+            labeler = StreamlitImageLabeler(st.session_state.images)
+            labeler.run()
+            
+    except MemoryError:
+        st.error("Out of memory. Please refresh the page.")
+        gc.collect()
+    except Exception as e:
+        st.error(f"An error occurred: {str(e)}")
+        gc.collect()
 
 if __name__ == "__main__":
     main()
