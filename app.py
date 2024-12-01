@@ -76,51 +76,37 @@ class StreamlitImageLabeler:
         gc.collect()
 
     def initialize_session_state(self):
-        # Add validation for existing user_id
-        if 'user_id' in st.session_state and st.session_state.user_id:
-            # Skip login if user already has valid ID
-            pass
-        else:
+        if 'user_id' not in st.session_state or not st.session_state.user_id:
             st.title("Multi-Category Image Labeling Tool")
             username = st.text_input("Enter your name:", key="username_input")
             if st.button("Start Labeling") and username:
                 st.session_state.user_id = username
-                # Initialize other required session state variables
-                st.session_state.active_category = None
-                st.session_state.labels = {}
-                st.session_state.locked_categories = {}
-                st.session_state.show_reset_confirm = False
-                st.session_state.category_progress = {
-                    category: {"last_labeled_index": -1}
-                    for category in self.CATEGORIES
-                }
-                st.session_state.category_indices = {
-                    category: 0 for category in self.CATEGORIES
-                }
-                st.rerun()
+                st.rerun()  
             st.stop()
             return
 
-        # Initialize other session states only if they don't exist
+        # Initialize other session state variables
         if 'active_category' not in st.session_state:
             st.session_state.active_category = None
         if 'labels' not in st.session_state:
             st.session_state.labels = {}
         if 'locked_categories' not in st.session_state:
             st.session_state.locked_categories = {}
-        if 'show_reset_confirm' not in st.session_state:
+        if 'show_reset_confirm' not in st.session_state:  # Add this line
             st.session_state.show_reset_confirm = False
         if 'category_progress' not in st.session_state:
             st.session_state.category_progress = {
                 category: {"last_labeled_index": -1}
                 for category in self.CATEGORIES
             }
+
+        # Initialize or update category indices
         if 'category_indices' not in st.session_state:
             st.session_state.category_indices = {
                 category: 0 for category in self.CATEGORIES
             }
 
-        # Only initialize labels if they don't exist
+        # Initialize labels with server data
         if 'labels' not in st.session_state:
             all_progress = self.api_service.get_all_progress()
             st.session_state.labels = {category: [] for category in self.CATEGORIES}
@@ -277,29 +263,19 @@ class StreamlitImageLabeler:
             st.header(f"Category: {st.session_state.active_category}")
             
             # Enhanced end session handling
-            if st.button("End Labeling Session", type="primary"):
+            if st.button("End Labeling Session"):
                 if st.session_state.active_category:
-                    with st.spinner("Ending session and releasing locks..."):
-                        # Save progress first
-                        self.save_progress()
-                        
-                        # Try to release lock with verification
-                        success = False
-                        for _ in range(3):
-                            if self.release_lock():
-                                success = True
-                                break
-                            time.sleep(1)
-                        
-                        if success:
-                            st.success("Session ended successfully")
-                        else:
-                            st.error("Failed to release lock properly")
-                            
-                        # Clear session state
-                        self.clear_session_state()
-                        st.session_state.active_category = None
-                        st.rerun()
+                    # Save any pending progress first
+                    self.save_progress()
+                    # Release the lock with retry
+                    for _ in range(3):  # Try up to 3 times
+                        if self.release_lock():
+                            break
+                        time.sleep(1)
+                    # Clear session state after successful release
+                    self.clear_session_state()
+                    st.session_state.active_category = None
+                    st.rerun()
             
             st.markdown("---")
             
@@ -715,39 +691,21 @@ class StreamlitImageLabeler:
             if hasattr(st.session_state, 'label_buffer') and st.session_state.label_buffer:
                 self.save_progress()
             
-            # Release locks with retry
-            if hasattr(st.session_state, 'active_category') and st.session_state.active_category:
-                max_retries = 3
-                for attempt in range(max_retries):
-                    try:
-                        success = self.api_service.release_lock(
-                            st.session_state.user_id,
-                            st.session_state.active_category
-                        )
-                        if success:
-                            logging.info(f"Successfully released lock for {st.session_state.active_category}")
-                            break
-                        else:
-                            logging.warning(f"Failed to release lock, attempt {attempt + 1}/{max_retries}")
-                            time.sleep(1)
-                    except Exception as e:
-                        logging.error(f"Error releasing lock on attempt {attempt + 1}: {e}")
-                        time.sleep(1)
+            # Release any held locks with retry
+            if st.session_state.get('active_category'):
+                for _ in range(3):  # Try up to 3 times
+                    if self.release_lock():
+                        break
+                    time.sleep(1)
             
-            # Clear session state
-            if hasattr(st.session_state, 'active_category'):
-                self.clear_session_state()
-                del st.session_state.active_category
+            # Clear category-specific states
+            self.clear_session_state()
             
-            # Clear other critical session state
-            if hasattr(st.session_state, 'user_id'):
-                del st.session_state.user_id
-            if hasattr(st.session_state, 'label_buffer'):
-                del st.session_state.label_buffer
-            
-            # Clear image cache and resources
+            # Clear image cache and other resources
             self.image_cache.clear()
             plt.close('all')
+            
+            # Force garbage collection
             gc.collect()
             
         except Exception as e:
@@ -809,12 +767,6 @@ def main():
         
         if st.session_state.loading_state == "completed":
             labeler = StreamlitImageLabeler(st.session_state.images)
-            
-            # Add session state cleanup on page reload/close
-            def cleanup_on_reload():
-                labeler.cleanup()
-            
-            st.session_state['_on_reload'] = cleanup_on_reload
             labeler.run()
             
     except MemoryError:
@@ -823,10 +775,6 @@ def main():
     except Exception as e:
         st.error(f"An error occurred: {str(e)}")
         gc.collect()
-
-    # Ensure cleanup runs on session end
-    if '_on_reload' in st.session_state:
-        st.session_state['_on_reload']()
 
 if __name__ == "__main__":
     main()
