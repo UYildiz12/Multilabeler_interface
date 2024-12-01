@@ -564,25 +564,39 @@ class StreamlitImageLabeler:
                 # Save any pending progress
                 self.save_progress()
                 
+                category = st.session_state.active_category
+                logging.info(f"Attempting to release lock for category: {category}")
+                
+                # Get current lock status
+                locked_categories = self.api_service.get_locked_categories()
+                if category not in locked_categories:
+                    logging.info(f"No active lock found for {category}")
+                    return True
+                
+                current_lock = locked_categories.get(category)
+                if current_lock and current_lock["user"] != st.session_state.user_id:
+                    logging.warning(f"Lock for {category} is held by {current_lock['user']}, not {st.session_state.user_id}")
+                    return False
+                
                 # Attempt to release lock
                 success = self.api_service.release_lock(
                     st.session_state.user_id,
-                    st.session_state.active_category
+                    category
                 )
                 
                 if success:
-                    # Verify lock was actually released
-                    locked_categories = self.api_service.get_locked_categories()
-                    if st.session_state.active_category not in locked_categories:
-                        logging.info(f"Successfully released lock for {st.session_state.active_category}")
+                    # Double-check lock was released
+                    updated_locks = self.api_service.get_locked_categories()
+                    if category not in updated_locks:
+                        logging.info(f"Successfully released lock for {category}")
                         self.clear_session_state()
                         self._force_cleanup()
                         return True
                     else:
-                        logging.error("Lock release reported success but category is still locked")
+                        logging.error(f"Lock release verification failed for {category}")
                         return False
                 else:
-                    logging.error("Failed to release lock")
+                    logging.error(f"Failed to release lock for {category}")
                     return False
             except Exception as e:
                 logging.error(f"Error releasing lock: {str(e)}")

@@ -73,6 +73,14 @@ class APIService:
             self._handle_request_error(e)
             raise
 
+    def _sanitize_category(self, category: str) -> str:
+        """Consistent category name sanitization"""
+        return category.replace('/', '_')
+
+    def _desanitize_category(self, category: str) -> str:
+        """Convert sanitized category name back to original format"""
+        return category.replace('_', '/')
+
     @backoff.on_exception(
         backoff.expo,
         (requests.exceptions.RequestException, ConnectionError),
@@ -86,6 +94,8 @@ class APIService:
                 logging.error("Cannot acquire lock: No user ID provided")
                 return False
                 
+            sanitized_category = self._sanitize_category(category)
+            
             # Check current lock status first
             locked_categories = self.get_locked_categories()
             if category in locked_categories:
@@ -94,7 +104,6 @@ class APIService:
                     logging.info(f"Category {category} is locked by {lock_info['user']}")
                     return False
             
-            sanitized_category = category.replace('/', '_')
             response = self._make_request(
                 'POST',
                 'acquire_lock',
@@ -102,7 +111,7 @@ class APIService:
             )
             
             if response.status_code == 200:
-                # Verify lock was acquired
+                # Verify lock was acquired with original category name
                 locked_categories = self.get_locked_categories()
                 return (category in locked_categories and 
                         locked_categories[category]["user"] == user_id)
@@ -125,19 +134,15 @@ class APIService:
                 logging.error("Cannot release lock: Missing user_id or category")
                 return False
 
-            # Ensure consistent sanitization of category name
-            sanitized_category = category.replace('/', '_')
-
-            # First verify if we hold the lock
-            locked_categories = self.get_locked_categories()
-            if sanitized_category not in locked_categories:
-                logging.warning(f"No lock found for category {category}")
-                return True  # Consider it success if there's no lock
+            sanitized_category = self._sanitize_category(category)
             
-            lock_info = locked_categories[sanitized_category]
-            if lock_info["user"] != user_id:
-                logging.warning(f"Lock for {category} is held by {lock_info['user']}, not {user_id}")
-                return False
+            # Check lock status with original category name
+            locked_categories = self.get_locked_categories()
+            if category in locked_categories:
+                lock_info = locked_categories[category]
+                if lock_info["user"] != user_id:
+                    logging.warning(f"Lock for {category} is held by {lock_info['user']}, not {user_id}")
+                    return False
 
             response = self._make_request(
                 'POST',
@@ -150,10 +155,14 @@ class APIService:
             )
 
             if response.status_code == 200:
-                # Verify lock was released
+                # Verify lock was released using original category name
                 updated_locks = self.get_locked_categories()
-                return sanitized_category not in updated_locks
-            
+                if category not in updated_locks:
+                    logging.info(f"Successfully released lock for {category}")
+                    return True
+                logging.error(f"Lock release verification failed for {category}")
+                return False
+
             logging.error(f"Failed to release lock: Server returned {response.status_code}")
             return False
 
@@ -170,9 +179,9 @@ class APIService:
             response = self._make_request('GET', 'get_locked_categories')
             if response.status_code == 200:
                 locked_categories = response.json()
-                # Handle both sanitized and unsanitized category names
+                # Convert sanitized names back to original format
                 return {
-                    k.replace('_', '/'): v 
+                    self._desanitize_category(k): v 
                     for k, v in locked_categories.items()
                 }
             return {}
@@ -183,7 +192,7 @@ class APIService:
     def save_progress(self, category: str, index: int, label_data: Dict[str, Any]) -> bool:
         try:
             # Sanitize category name
-            sanitized_category = category.replace('/', '_')
+            sanitized_category = self._sanitize_category(category)
             payload = {
                 "category": sanitized_category,
                 "index": index,
@@ -218,7 +227,7 @@ class APIService:
     def get_progress(self, category: str) -> Dict[str, Any]:
         """Get progress with better error handling"""
         # Sanitize category name
-        sanitized_category = category.replace('/', '_')
+        sanitized_category = self._sanitize_category(category)
         max_retries = 3
         for attempt in range(max_retries):
             try:
@@ -249,7 +258,7 @@ class APIService:
 
     def get_last_labeled_index(self, category: str) -> int:
         # Sanitize category name
-        sanitized_category = category.replace('/', '_')
+        sanitized_category = self._sanitize_category(category)
         try:
             response = self._make_request('GET', 'get_last_labeled_index', params={"category": sanitized_category})
             if response.status_code == 200:
