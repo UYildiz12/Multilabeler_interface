@@ -61,14 +61,33 @@ class APIService:
         max_time=30  # Maximum time to try
     )
     def _make_request(self, method: str, endpoint: str, **kwargs) -> requests.Response:
+        """Enhanced request handling with better logging"""
         try:
             kwargs.setdefault('timeout', (5, 15))  # (connect, read) timeouts
             # Normalize endpoint by removing leading/trailing slashes
             endpoint = endpoint.strip('/')
             url = f"{self.base_url}/{endpoint}"
+            
+            # Log request details
+            logging.debug(f"Making {method} request to {url}")
+            if 'json' in kwargs:
+                logging.debug(f"Request payload: {kwargs['json']}")
+            
             response = self.session.request(method, url, **kwargs)
+            
+            # Log response details
+            logging.debug(f"Response status: {response.status_code}")
+            logging.debug(f"Response headers: {dict(response.headers)}")
+            
+            try:
+                response_json = response.json()
+                logging.debug(f"Response body: {response_json}")
+            except:
+                logging.debug(f"Response text: {response.text}")
+            
             response.raise_for_status()
             return response
+            
         except Exception as e:
             self._handle_request_error(e)
             raise
@@ -136,26 +155,33 @@ class APIService:
 
             sanitized_category = self._sanitize_category(category)
             
-            # Check lock status with original category name
+            # Log request details for debugging
+            logging.info(f"Attempting to release lock - User: {user_id}, Category: {category} (sanitized: {sanitized_category})")
+            
+            # Check lock status first
             locked_categories = self.get_locked_categories()
+            logging.info(f"Current locked categories: {locked_categories}")
+            
             if category in locked_categories:
                 lock_info = locked_categories[category]
                 if lock_info["user"] != user_id:
                     logging.warning(f"Lock for {category} is held by {lock_info['user']}, not {user_id}")
                     return False
 
+            # Send release request with sanitized data
             response = self._make_request(
                 'POST',
                 'release_lock',
                 json={
-                    "user_id": user_id,
+                    "user_id": str(user_id),
                     "category": sanitized_category
                 },
-                timeout=10  # Increased timeout
+                timeout=30  # Increased timeout
             )
 
             if response.status_code == 200:
-                # Verify lock was released using original category name
+                # Verify lock was released
+                time.sleep(1)  # Brief delay to allow server state to update
                 updated_locks = self.get_locked_categories()
                 if category not in updated_locks:
                     logging.info(f"Successfully released lock for {category}")
@@ -163,14 +189,12 @@ class APIService:
                 logging.error(f"Lock release verification failed for {category}")
                 return False
 
-            logging.error(f"Failed to release lock: Server returned {response.status_code}")
+            # Log response details for debugging
+            logging.error(f"Server response: {response.status_code} - {response.text}")
             return False
 
-        except requests.RequestException as e:
-            logging.error(f"Network error releasing lock: {str(e)}")
-            return False
         except Exception as e:
-            logging.error(f"Unexpected error releasing lock: {str(e)}")
+            logging.error(f"Error releasing lock: {str(e)}", exc_info=True)
             return False
 
     def get_locked_categories(self) -> Dict[str, Dict[str, Any]]:

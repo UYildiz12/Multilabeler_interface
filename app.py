@@ -569,6 +569,8 @@ class StreamlitImageLabeler:
                 
                 # Get current lock status
                 locked_categories = self.api_service.get_locked_categories()
+                logging.info(f"Current locked categories: {locked_categories}")
+                
                 if category not in locked_categories:
                     logging.info(f"No active lock found for {category}")
                     return True
@@ -578,28 +580,34 @@ class StreamlitImageLabeler:
                     logging.warning(f"Lock for {category} is held by {current_lock['user']}, not {st.session_state.user_id}")
                     return False
                 
-                # Attempt to release lock
-                success = self.api_service.release_lock(
-                    st.session_state.user_id,
-                    category
-                )
+                # Attempt to release lock with multiple retries
+                max_retries = 3
+                for attempt in range(max_retries):
+                    try:
+                        logging.info(f"Release attempt {attempt + 1}/{max_retries}")
+                        success = self.api_service.release_lock(
+                            str(st.session_state.user_id),  # Ensure user_id is string
+                            category
+                        )
+                        
+                        if success:
+                            logging.info(f"Successfully released lock for {category}")
+                            self.clear_session_state()
+                            self._force_cleanup()
+                            return True
+                        
+                        time.sleep(1)  # Wait before retry
+                        
+                    except Exception as e:
+                        logging.error(f"Error on release attempt {attempt + 1}: {str(e)}")
+                        if attempt < max_retries - 1:
+                            time.sleep(2 ** attempt)  # Exponential backoff
+                        
+                logging.error(f"Failed to release lock after {max_retries} attempts")
+                return False
                 
-                if success:
-                    # Double-check lock was released
-                    updated_locks = self.api_service.get_locked_categories()
-                    if category not in updated_locks:
-                        logging.info(f"Successfully released lock for {category}")
-                        self.clear_session_state()
-                        self._force_cleanup()
-                        return True
-                    else:
-                        logging.error(f"Lock release verification failed for {category}")
-                        return False
-                else:
-                    logging.error(f"Failed to release lock for {category}")
-                    return False
             except Exception as e:
-                logging.error(f"Error releasing lock: {str(e)}")
+                logging.error(f"Error in release_lock: {str(e)}", exc_info=True)
                 return False
         return True
 
