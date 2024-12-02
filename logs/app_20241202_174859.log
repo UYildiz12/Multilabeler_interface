@@ -1,0 +1,33 @@
+17:49:01 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+17:49:02 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+17:49:05 - INFO - Application starting with enhanced logging
+17:49:05 - INFO - Memory after creating labeler: 256.1 MB
+17:49:09 - INFO - Application starting with enhanced logging
+17:49:09 - INFO - Memory before creating labeler: 343.9 MB
+17:49:20 - INFO - Application starting with enhanced logging
+17:49:20 - INFO - Memory before creating labeler: 420.3 MB
+17:49:20 - INFO - Memory after creating labeler: 420.3 MB
+17:48:59 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+17:49:02 - INFO - Application starting with enhanced logging
+17:49:02 - INFO - Memory before creating labeler: 253.3 MB
+17:49:04 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+17:49:08 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+17:49:11 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+17:49:17 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+17:49:25 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+17:52:12 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+17:52:21 - INFO - Memory changes during cleanup:
+17:52:21 - INFO - D:\Anaconda\Lib\tracemalloc.py:115: size=0 B (-156 KiB), count=0 (-1998)
+17:52:21 - INFO - D:\Anaconda\Lib\ctypes\__init__.py:64: size=62.6 KiB (+62.6 KiB), count=2 (+2), average=31.3 KiB
+17:52:21 - INFO - D:\Anaconda\Lib\logging\__init__.py:1213: size=67 B (-320 B), count=1 (-3), average=67 B
+17:52:21 - INFO - Memory after cleanup: 435.5 MB
+17:48:59 - INFO - Application starting with enhanced logging
+17:48:59 - INFO - Memory after creating labeler: 250.2 MB
+17:49:01 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+17:49:03 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+17:49:15 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+17:49:20 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+17:52:45 - INFO - Memory changes during cleanup:
+17:52:45 - INFO - D:\Anaconda\Lib\tracemalloc.py:115: size=0 B (-156 KiB), count=0 (-1999)
+17:52:45 - INFO - D:\Anaconda\Lib\ctypes\__init__.py:64: size=62.6 KiB (+62.6 KiB), count=2 (+2), average=31.3 KiB
+17:52:45 - INFO - D:\Anaconda\Lib\copy.py:280: size=2688 B (-944 B), count=42 (-15), average=64 B

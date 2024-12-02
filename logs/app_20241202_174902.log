@@ -1,0 +1,10 @@
+17:49:04 - INFO - Cache cleanup: removed 0 items, memory change: 0.01 MB
+17:49:07 - INFO - Application starting with enhanced logging
+17:49:07 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+17:49:10 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+17:49:16 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+17:49:24 - INFO - Memory after cleanup: 2.6%
+17:52:23 - INFO - Memory changes during cleanup:
+17:52:23 - INFO - D:\Anaconda\Lib\tracemalloc.py:115: size=0 B (-156 KiB), count=0 (-1998)
+17:52:23 - INFO - D:\Anaconda\Lib\ctypes\__init__.py:64: size=62.6 KiB (+62.6 KiB), count=2 (+2), average=31.3 KiB
+17:52:23 - INFO - D:\Anaconda\Lib\logging\__init__.py:1213: size=134 B (-448 B), count=2 (-5), average=67 B

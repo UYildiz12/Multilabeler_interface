@@ -3,9 +3,23 @@ import requests
 import os
 import streamlit as st
 from typing import Optional, Dict, Any
+import gc
+import logging
+from weakref import WeakValueDictionary
+import atexit
 
 class DataLoader:
     """Class for downloading and loading the Kay dataset"""
+    _data_cache = WeakValueDictionary()
+    
+    @staticmethod
+    def _cleanup_cache():
+        """Clean up cached data"""
+        try:
+            DataLoader._data_cache.clear()
+            gc.collect()
+        except Exception as e:
+            logging.error(f"DataLoader cache cleanup error: {e}")
     
     @staticmethod
     def download_file(url: str, filename: str) -> bool:
@@ -50,8 +64,8 @@ class DataLoader:
                 os.remove(filename)  # Remove partially downloaded file
             return False
     
-    @staticmethod
-    def load_data(include_train: bool = True) -> Optional[np.ndarray]:
+    @classmethod
+    def load_data(cls, include_train: bool = True) -> Optional[np.ndarray]:
         """
         Download and load the Kay dataset
         
@@ -61,6 +75,12 @@ class DataLoader:
         Returns:
             Optional[np.ndarray]: Array of images, or None if loading fails
         """
+        cache_key = f"data_{include_train}"
+        
+        # Check cache first
+        if cache_key in cls._data_cache:
+            return cls._data_cache[cache_key]
+        
         # Define files and URLs
         files = {
             "kay_images.npz": "https://osf.io/ymnjv/download",
@@ -104,6 +124,13 @@ class DataLoader:
                     if stimuli.ndim != 4:
                         raise ValueError(f"Unexpected data shape: {stimuli.shape}")
                         
+                    # Cache the loaded data
+                    cls._data_cache[cache_key] = stimuli
+                    
+                    # Register cleanup with streamlit session
+                    if hasattr(st.session_state, '_cleanup_handlers'):
+                        st.session_state._cleanup_handlers.append(cls._cleanup_cache)
+                        
                     return stimuli
                     
             except Exception as e:
@@ -113,9 +140,13 @@ class DataLoader:
                 
         except Exception as e:
             st.error(f"Error in data loading process: {str(e)}")
+            cls._cleanup_cache()
             if 'original_dir' in locals():
                 os.chdir(original_dir)
             return None
+
+# Register cleanup for module exit
+atexit.register(DataLoader._cleanup_cache)
 
 def download_data():
     url = "https://osf.io/ymnjv/download"

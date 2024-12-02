@@ -1,0 +1,34 @@
+17:59:36 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+17:59:41 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+18:00:17 - INFO - Top 10 memory allocations:
+18:00:17 - INFO -   <__array_function__ internals>:200: size=117 MiB, count=6, average=19.5 MiB
+18:00:17 - INFO -   <frozen importlib._bootstrap_external>:729: size=18.8 MiB, count=122589, average=161 B
+18:00:17 - INFO -   D:\Anaconda\Lib\json\decoder.py:353: size=3953 KiB, count=38604, average=105 B
+18:00:17 - INFO -   <frozen importlib._bootstrap>:241: size=2680 KiB, count=25318, average=108 B
+18:00:17 - INFO -   D:\Anaconda\Lib\site-packages\altair\utils\core.py:733: size=1699 KiB, count=72, average=23.6 KiB
+18:00:17 - INFO -   C:\Users\user\Desktop\Labels-Local\app.py:224: size=515 KiB, count=5739, average=92 B
+18:00:17 - INFO -   D:\Anaconda\Lib\linecache.py:137: size=473 KiB, count=4734, average=102 B
+18:00:17 - INFO -   D:\Anaconda\Lib\re\__init__.py:185: size=339 KiB, count=227, average=1531 B
+18:00:17 - INFO -   D:\Anaconda\Lib\site-packages\pandas\util\_decorators.py:380: size=323 KiB, count=322, average=1029 B
+18:00:17 - INFO -   <frozen abc>:106: size=296 KiB, count=1018, average=298 B
+18:00:22 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+18:00:25 - INFO - Memory after creating labeler:
+18:00:25 - INFO -   RSS: 454.3 MB
+18:00:25 - INFO -   VMS: 438.2 MB
+18:00:25 - INFO -   Percent: 2.8%
+18:00:29 - INFO - Application starting with enhanced logging
+18:01:23 - INFO - Memory after creating labeler:
+18:01:23 - INFO -   RSS: 457.1 MB
+18:01:23 - INFO -   VMS: 441.1 MB
+18:01:23 - INFO -   Percent: 2.8%
+18:01:50 - INFO - Application starting with enhanced logging
+18:01:50 - INFO - Memory before creating labeler:
+18:01:50 - INFO -   RSS: 458.5 MB
+18:01:50 - INFO -   VMS: 443.6 MB
+18:01:50 - INFO -   Percent: 2.8%
+18:02:37 - INFO - Memory changes during image rendering:
+18:02:37 - INFO - D:\Anaconda\Lib\site-packages\streamlit\elements\image.py:279: size=181 KiB (+89.4 KiB), count=2 (+1), average=90.4 KiB
+18:02:37 - INFO - D:\Anaconda\Lib\site-packages\matplotlib\cbook\__init__.py:714: size=64.1 KiB (+64.1 KiB), count=2 (+2), average=32.0 KiB
+18:02:37 - INFO - D:\Anaconda\Lib\site-packages\matplotlib\transforms.py:209: size=53.6 KiB (+53.6 KiB), count=705 (+704), average=78 B
+18:04:05 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+18:13:37 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB

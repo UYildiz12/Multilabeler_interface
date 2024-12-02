@@ -1,0 +1,6 @@
+17:49:17 - INFO - Application starting with enhanced logging
+17:49:30 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+17:52:39 - INFO - Memory changes during cleanup:
+17:52:39 - INFO - D:\Anaconda\Lib\tracemalloc.py:558: size=4520 B (+4464 B), count=82 (+81), average=55 B
+17:52:39 - INFO - D:\Anaconda\Lib\email\message.py:511: size=0 B (-3528 B), count=0 (-63)
+17:52:39 - INFO - D:\Anaconda\Lib\weakref.py:590: size=0 B (-576 B), count=0 (-9)

@@ -1,0 +1,68 @@
+18:01:50 - INFO - Top 10 memory allocations:
+18:01:50 - INFO -   <__array_function__ internals>:200: size=117 MiB, count=6, average=19.5 MiB
+18:01:50 - INFO -   <frozen importlib._bootstrap_external>:729: size=18.8 MiB, count=122589, average=161 B
+18:01:50 - INFO -   D:\Anaconda\Lib\json\decoder.py:353: size=3953 KiB, count=38603, average=105 B
+18:01:50 - INFO -   <frozen importlib._bootstrap>:241: size=2680 KiB, count=25315, average=108 B
+18:01:50 - INFO -   D:\Anaconda\Lib\site-packages\altair\utils\core.py:733: size=1699 KiB, count=72, average=23.6 KiB
+18:01:50 - INFO -   C:\Users\user\Desktop\Labels-Local\app.py:224: size=515 KiB, count=5739, average=92 B
+18:01:50 - INFO -   D:\Anaconda\Lib\linecache.py:137: size=473 KiB, count=4734, average=102 B
+18:01:50 - INFO -   D:\Anaconda\Lib\re\__init__.py:185: size=339 KiB, count=227, average=1531 B
+18:01:50 - INFO -   D:\Anaconda\Lib\site-packages\pandas\util\_decorators.py:380: size=323 KiB, count=322, average=1029 B
+18:01:50 - INFO -   <frozen abc>:106: size=296 KiB, count=1018, average=298 B
+18:04:00 - INFO - Top 10 memory allocations:
+18:04:00 - INFO -   <__array_function__ internals>:200: size=117 MiB, count=6, average=19.5 MiB
+18:04:00 - INFO -   <frozen importlib._bootstrap_external>:729: size=18.8 MiB, count=122589, average=161 B
+18:04:00 - INFO -   D:\Anaconda\Lib\json\decoder.py:353: size=3953 KiB, count=38603, average=105 B
+18:04:00 - INFO -   <frozen importlib._bootstrap>:241: size=2680 KiB, count=25311, average=108 B
+18:04:00 - INFO -   D:\Anaconda\Lib\site-packages\altair\utils\core.py:733: size=1699 KiB, count=72, average=23.6 KiB
+18:04:00 - INFO -   C:\Users\user\Desktop\Labels-Local\app.py:224: size=515 KiB, count=5735, average=92 B
+18:04:00 - INFO -   D:\Anaconda\Lib\linecache.py:137: size=473 KiB, count=4734, average=102 B
+18:04:00 - INFO -   D:\Anaconda\Lib\re\__init__.py:185: size=339 KiB, count=227, average=1531 B
+18:04:00 - INFO -   D:\Anaconda\Lib\site-packages\pandas\util\_decorators.py:380: size=323 KiB, count=322, average=1029 B
+18:04:00 - INFO -   <frozen abc>:106: size=296 KiB, count=1018, average=298 B
+18:04:03 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+18:06:30 - INFO - Top 10 memory allocations:
+18:06:30 - INFO -   <__array_function__ internals>:200: size=117 MiB, count=6, average=19.5 MiB
+18:06:30 - INFO -   <frozen importlib._bootstrap_external>:729: size=18.8 MiB, count=122589, average=161 B
+18:06:30 - INFO -   D:\Anaconda\Lib\json\decoder.py:353: size=3953 KiB, count=38614, average=105 B
+18:06:30 - INFO -   <frozen importlib._bootstrap>:241: size=2680 KiB, count=25311, average=108 B
+18:06:30 - INFO -   D:\Anaconda\Lib\site-packages\altair\utils\core.py:733: size=1699 KiB, count=72, average=23.6 KiB
+18:06:30 - INFO -   C:\Users\user\Desktop\Labels-Local\app.py:224: size=515 KiB, count=5735, average=92 B
+18:06:30 - INFO -   D:\Anaconda\Lib\linecache.py:137: size=473 KiB, count=4734, average=102 B
+18:06:30 - INFO -   D:\Anaconda\Lib\re\__init__.py:185: size=339 KiB, count=227, average=1531 B
+18:06:30 - INFO -   D:\Anaconda\Lib\site-packages\pandas\util\_decorators.py:380: size=323 KiB, count=322, average=1029 B
+18:06:30 - INFO -   <frozen abc>:106: size=296 KiB, count=1018, average=298 B
+18:09:13 - INFO - Application starting with enhanced logging
+18:09:13 - INFO - Memory before creating labeler:
+18:09:13 - INFO -   RSS: 468.4 MB
+18:09:13 - INFO -   VMS: 454.0 MB
+18:09:13 - INFO -   Percent: 2.9%
+18:09:45 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+18:10:17 - INFO - Application starting with enhanced logging
+18:10:17 - INFO - Memory before creating labeler:
+18:10:17 - INFO -   RSS: 470.3 MB
+18:10:17 - INFO -   VMS: 455.8 MB
+18:10:17 - INFO -   Percent: 2.9%
+18:11:29 - INFO - Top 10 memory allocations:
+18:11:29 - INFO -   <__array_function__ internals>:200: size=117 MiB, count=6, average=19.5 MiB
+18:11:29 - INFO -   <frozen importlib._bootstrap_external>:729: size=18.8 MiB, count=122589, average=161 B
+18:11:29 - INFO -   D:\Anaconda\Lib\json\decoder.py:353: size=3966 KiB, count=38763, average=105 B
+18:11:29 - INFO -   <frozen importlib._bootstrap>:241: size=2679 KiB, count=25307, average=108 B
+18:11:29 - INFO -   D:\Anaconda\Lib\site-packages\altair\utils\core.py:733: size=1699 KiB, count=72, average=23.6 KiB
+18:11:29 - INFO -   C:\Users\user\Desktop\Labels-Local\app.py:809: size=659 KiB, count=7363, average=92 B
+18:11:29 - INFO -   C:\Users\user\Desktop\Labels-Local\app.py:224: size=514 KiB, count=5729, average=92 B
+18:11:29 - INFO -   D:\Anaconda\Lib\linecache.py:137: size=473 KiB, count=4734, average=102 B
+18:11:29 - INFO -   D:\Anaconda\Lib\re\__init__.py:185: size=339 KiB, count=227, average=1531 B
+18:11:29 - INFO -   D:\Anaconda\Lib\site-packages\pandas\util\_decorators.py:380: size=323 KiB, count=322, average=1029 B
+18:13:36 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+18:15:51 - INFO - Top 10 memory allocations:
+18:15:51 - INFO -   <__array_function__ internals>:200: size=117 MiB, count=6, average=19.5 MiB
+18:15:51 - INFO -   <frozen importlib._bootstrap_external>:729: size=18.8 MiB, count=122589, average=161 B
+18:15:51 - INFO -   D:\Anaconda\Lib\json\decoder.py:353: size=3652 KiB, count=34377, average=109 B
+18:15:51 - INFO -   <frozen importlib._bootstrap>:241: size=2679 KiB, count=25305, average=108 B
+18:15:51 - INFO -   D:\Anaconda\Lib\site-packages\altair\utils\core.py:733: size=1699 KiB, count=72, average=23.6 KiB
+18:15:51 - INFO -   D:\Anaconda\Lib\tracemalloc.py:125: size=1462 KiB, count=20794, average=72 B
+18:15:51 - INFO -   D:\Anaconda\Lib\tracemalloc.py:498: size=975 KiB, count=20804, average=48 B
+18:15:51 - INFO -   D:\Anaconda\Lib\tracemalloc.py:193: size=975 KiB, count=20804, average=48 B
+18:15:51 - INFO -   D:\Anaconda\Lib\linecache.py:137: size=473 KiB, count=4734, average=102 B
+18:15:51 - INFO -   D:\Anaconda\Lib\copyreg.py:105: size=422 KiB, count=3359, average=129 B

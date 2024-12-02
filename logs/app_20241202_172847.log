@@ -1,0 +1,5 @@
+17:30:56 - INFO - Memory changes during cleanup:
+17:30:56 - INFO - <frozen genericpath>:42: size=0 B (-200 B), count=0 (-4)
+17:30:56 - INFO - D:\Anaconda\Lib\tracemalloc.py:558: size=216 B (+160 B), count=4 (+3), average=54 B
+17:30:56 - INFO - <frozen ntpath>:145: size=0 B (-112 B), count=0 (-1)
+17:30:56 - INFO - Memory after cleanup: 470.3 MB

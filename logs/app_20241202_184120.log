@@ -1,0 +1,13 @@
+18:41:27 - INFO - Application starting with enhanced logging
+18:41:30 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+18:41:38 - INFO - Top 10 memory allocations:
+18:41:38 - INFO -   <__array_function__ internals>:200: size=1169 MiB, count=31, average=37.7 MiB
+18:41:38 - INFO -   <frozen importlib._bootstrap_external>:729: size=18.2 MiB, count=114947, average=166 B
+18:41:38 - INFO -   D:\Anaconda\Lib\json\decoder.py:353: size=3652 KiB, count=34377, average=109 B
+18:41:38 - INFO -   <frozen importlib._bootstrap>:241: size=2720 KiB, count=25553, average=109 B
+18:41:38 - INFO -   D:\Anaconda\Lib\site-packages\altair\utils\core.py:733: size=1699 KiB, count=72, average=23.6 KiB
+18:41:38 - INFO -   D:\Anaconda\Lib\tracemalloc.py:125: size=1342 KiB, count=19086, average=72 B
+18:41:38 - INFO -   D:\Anaconda\Lib\tracemalloc.py:498: size=895 KiB, count=19096, average=48 B
+18:41:38 - INFO -   D:\Anaconda\Lib\tracemalloc.py:193: size=895 KiB, count=19096, average=48 B
+18:41:38 - INFO -   D:\Anaconda\Lib\linecache.py:137: size=485 KiB, count=4859, average=102 B
+18:41:38 - INFO -   D:\Anaconda\Lib\re\__init__.py:185: size=339 KiB, count=227, average=1531 B

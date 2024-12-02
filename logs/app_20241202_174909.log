@@ -1,0 +1,5 @@
+17:52:16 - INFO - Memory changes during cleanup:
+17:52:16 - INFO - D:\Anaconda\Lib\json\decoder.py:353: size=3652 KiB (-280 KiB), count=34376 (-3925), average=109 B
+17:52:16 - INFO - C:\Users\user\Desktop\Labels-Local\app.py:198: size=0 B (-193 KiB), count=0 (-2144)
+17:52:16 - INFO - C:\Users\user\Desktop\Labels-Local\app.py:197: size=0 B (-15.9 KiB), count=0 (-3)
+17:52:16 - INFO - Memory after cleanup: 430.2 MB

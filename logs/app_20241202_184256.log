@@ -1,0 +1,37 @@
+18:42:56 - INFO - Application starting with enhanced logging
+18:42:57 - INFO - Memory before creating labeler:
+18:42:57 - INFO -   RSS: 250.1 MB
+18:42:57 - INFO -   VMS: 231.2 MB
+18:42:57 - INFO -   Percent: 1.5%
+18:42:57 - INFO - Top 10 memory allocations:
+18:42:57 - INFO -   <__array_function__ internals>:200: size=117 MiB, count=4, average=29.2 MiB
+18:42:57 - INFO -   D:\Anaconda\Lib\linecache.py:137: size=465 KiB, count=4653, average=102 B
+18:42:57 - INFO -   <frozen ntpath>:723: size=179 KiB, count=1635, average=112 B
+18:42:57 - INFO -   <frozen ntpath>:720: size=166 KiB, count=1635, average=104 B
+18:42:57 - INFO -   <frozen ntpath>:66: size=166 KiB, count=1635, average=104 B
+18:42:57 - INFO -   D:\Anaconda\Lib\selectors.py:314: size=144 KiB, count=5, average=28.8 KiB
+18:42:57 - INFO -   D:\Anaconda\Lib\inspect.py:1000: size=101 KiB, count=1, average=101 KiB
+18:42:57 - INFO -   D:\Anaconda\Lib\ctypes\__init__.py:64: size=62.6 KiB, count=2, average=31.3 KiB
+18:42:57 - INFO -   D:\Anaconda\Lib\inspect.py:997: size=50.7 KiB, count=1, average=50.7 KiB
+18:42:57 - INFO -   <frozen abc>:123: size=16.8 KiB, count=217, average=79 B
+18:42:59 - INFO - Application starting with enhanced logging
+18:42:59 - INFO - Application starting with enhanced logging
+18:42:59 - INFO - Memory after creating labeler:
+18:42:59 - INFO -   RSS: 251.5 MB
+18:42:59 - INFO -   VMS: 232.8 MB
+18:42:59 - INFO -   Percent: 1.5%
+18:42:59 - INFO - Top 10 memory allocations:
+18:42:59 - INFO -   <__array_function__ internals>:200: size=117 MiB, count=4, average=29.2 MiB
+18:42:59 - INFO -   D:\Anaconda\Lib\linecache.py:137: size=465 KiB, count=4653, average=102 B
+18:42:59 - INFO -   <frozen ntpath>:723: size=179 KiB, count=1635, average=112 B
+18:42:59 - INFO -   <frozen ntpath>:66: size=167 KiB, count=1650, average=104 B
+18:42:59 - INFO -   <frozen ntpath>:720: size=166 KiB, count=1635, average=104 B
+18:42:59 - INFO -   D:\Anaconda\Lib\inspect.py:1000: size=101 KiB, count=1, average=101 KiB
+18:42:59 - INFO -   D:\Anaconda\Lib\site-packages\streamlit\watcher\local_sources_watcher.py:176: size=64.2 KiB, count=2, average=32.1 KiB
+18:42:59 - INFO -   D:\Anaconda\Lib\ctypes\__init__.py:64: size=62.6 KiB, count=2, average=31.3 KiB
+18:42:59 - INFO -   D:\Anaconda\Lib\inspect.py:997: size=50.7 KiB, count=1, average=50.7 KiB
+18:42:59 - INFO -   <frozen abc>:123: size=36.1 KiB, count=470, average=79 B
+18:42:59 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+18:43:05 - INFO - Application starting with enhanced logging
+18:43:09 - INFO - Application starting with enhanced logging
+18:43:11 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB

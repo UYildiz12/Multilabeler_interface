@@ -1,0 +1,4 @@
+17:31:03 - INFO - Memory changes during cleanup:
+17:31:03 - INFO - D:\Anaconda\Lib\tracemalloc.py:115: size=0 B (-156 KiB), count=0 (-1999)
+17:31:03 - INFO - D:\Anaconda\Lib\ctypes\__init__.py:64: size=62.6 KiB (+62.6 KiB), count=2 (+2), average=31.3 KiB
+17:31:03 - INFO - D:\Anaconda\Lib\copy.py:280: size=4160 B (-1648 B), count=65 (-26), average=64 B

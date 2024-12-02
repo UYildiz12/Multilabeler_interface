@@ -1,0 +1,14 @@
+18:07:57 - INFO - D:\Anaconda\Lib\site-packages\streamlit\elements\image.py:279: size=180 KiB (+102 KiB), count=2 (+1), average=90.0 KiB
+18:07:57 - INFO - D:\Anaconda\Lib\site-packages\matplotlib\cbook\__init__.py:714: size=64.1 KiB (+64.1 KiB), count=2 (+2), average=32.0 KiB
+18:10:45 - INFO - Memory changes during image rendering:
+18:12:53 - INFO - Top 10 memory allocations:
+18:12:53 - INFO -   <__array_function__ internals>:200: size=117 MiB, count=6, average=19.5 MiB
+18:12:53 - INFO -   <frozen importlib._bootstrap_external>:729: size=18.8 MiB, count=122589, average=161 B
+18:12:53 - INFO -   D:\Anaconda\Lib\json\decoder.py:353: size=3966 KiB, count=38763, average=105 B
+18:12:53 - INFO -   <frozen importlib._bootstrap>:241: size=2679 KiB, count=25306, average=108 B
+18:12:53 - INFO -   D:\Anaconda\Lib\site-packages\altair\utils\core.py:733: size=1699 KiB, count=72, average=23.6 KiB
+18:12:53 - INFO -   C:\Users\user\Desktop\Labels-Local\app.py:809: size=659 KiB, count=7363, average=92 B
+18:12:53 - INFO -   C:\Users\user\Desktop\Labels-Local\app.py:224: size=514 KiB, count=5727, average=92 B
+18:12:53 - INFO -   D:\Anaconda\Lib\linecache.py:137: size=473 KiB, count=4734, average=102 B
+18:12:53 - INFO -   D:\Anaconda\Lib\copyreg.py:105: size=347 KiB, count=2760, average=129 B
+18:12:53 - INFO -   D:\Anaconda\Lib\re\__init__.py:185: size=339 KiB, count=227, average=1531 B

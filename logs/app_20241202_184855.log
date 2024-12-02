@@ -1,0 +1,23 @@
+18:49:22 - INFO - Application starting with enhanced logging
+18:49:20 - INFO - Memory before creating labeler:
+18:49:20 - INFO -   RSS: 606.9 MB
+18:49:20 - INFO -   VMS: 592.8 MB
+18:49:20 - INFO -   Percent: 3.7%
+18:49:22 - INFO - Application starting with enhanced logging
+18:49:27 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+18:49:28 - INFO - Memory changes during cleanup:
+18:49:28 - INFO - <frozen abc>:123: size=87.3 KiB (+33.4 KiB), count=883 (+188), average=101 B
+18:49:28 - INFO - D:\Anaconda\Lib\site-packages\streamlit\runtime\metrics_util.py:300: size=0 B (-1456 B), count=0 (-28)
+18:49:28 - INFO - D:\Anaconda\Lib\threading.py:258: size=26.7 KiB (-760 B), count=72 (-2), average=380 B
+18:49:28 - INFO - Memory after cleanup:
+18:49:28 - INFO -   RSS: 610.7 MB
+18:49:28 - INFO -   VMS: 596.7 MB
+18:49:28 - INFO -   Percent: 3.7%
+18:49:28 - INFO - Memory changes during cleanup:
+18:49:28 - INFO - D:\Anaconda\Lib\tracemalloc.py:115: size=0 B (-84.4 KiB), count=0 (-1080)
+18:49:28 - INFO - D:\Anaconda\Lib\tracemalloc.py:67: size=0 B (-64.6 KiB), count=0 (-1033)
+18:49:28 - INFO - D:\Anaconda\Lib\ctypes\__init__.py:64: size=62.6 KiB (+62.6 KiB), count=2 (+2), average=31.3 KiB
+18:49:33 - INFO - Memory changes during cleanup:
+18:49:33 - INFO - D:\Anaconda\Lib\tracemalloc.py:115: size=0 B (-80.6 KiB), count=0 (-1032)
+18:49:33 - INFO - D:\Anaconda\Lib\ctypes\__init__.py:64: size=62.6 KiB (+62.6 KiB), count=2 (+2), average=31.3 KiB
+18:49:33 - INFO - D:\Anaconda\Lib\tracemalloc.py:193: size=0 B (-46.7 KiB), count=0 (-996)

@@ -1,0 +1,20 @@
+18:06:26 - INFO - Memory changes during image rendering:
+18:06:26 - INFO - D:\Anaconda\Lib\site-packages\streamlit\elements\image.py:279: size=77.9 KiB (+77.9 KiB), count=1 (+1), average=77.9 KiB
+18:06:26 - INFO - D:\Anaconda\Lib\site-packages\matplotlib\cbook\__init__.py:714: size=64.1 KiB (+64.1 KiB), count=2 (+2), average=32.0 KiB
+18:06:26 - INFO - D:\Anaconda\Lib\site-packages\matplotlib\transforms.py:209: size=53.9 KiB (+53.9 KiB), count=710 (+709), average=78 B
+18:09:41 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+18:13:09 - INFO - Top 10 memory allocations:
+18:13:09 - INFO -   <__array_function__ internals>:200: size=117 MiB, count=21, average=5699 KiB
+18:13:09 - INFO -   <frozen importlib._bootstrap_external>:729: size=18.8 MiB, count=122589, average=161 B
+18:13:09 - INFO -   D:\Anaconda\Lib\json\decoder.py:353: size=3964 KiB, count=38750, average=105 B
+18:13:09 - INFO -   <frozen importlib._bootstrap>:241: size=2679 KiB, count=25306, average=108 B
+18:13:09 - INFO -   D:\Anaconda\Lib\site-packages\altair\utils\core.py:733: size=1699 KiB, count=72, average=23.6 KiB
+18:13:09 - INFO -   D:\Anaconda\Lib\tracemalloc.py:505: size=1317 KiB, count=13554, average=100 B
+18:13:09 - INFO -   C:\Users\user\Desktop\Labels-Local\app.py:809: size=659 KiB, count=7363, average=92 B
+18:13:09 - INFO -   D:\Anaconda\Lib\tracemalloc.py:498: size=635 KiB, count=13552, average=48 B
+18:13:09 - INFO -   D:\Anaconda\Lib\tracemalloc.py:193: size=635 KiB, count=13549, average=48 B
+18:13:09 - INFO -   D:\Anaconda\Lib\tracemalloc.py:499: size=576 KiB, count=1, average=576 KiB
+18:16:16 - INFO - Memory changes during cleanup:
+18:16:16 - INFO - D:\Anaconda\Lib\tracemalloc.py:67: size=0 B (-125 KiB), count=0 (-1998)
+18:16:16 - INFO - D:\Anaconda\Lib\ctypes\__init__.py:64: size=62.6 KiB (+62.6 KiB), count=2 (+2), average=31.3 KiB
+18:16:16 - INFO - D:\Anaconda\Lib\copy.py:280: size=102 KiB (-1840 B), count=1638 (-29), average=64 B

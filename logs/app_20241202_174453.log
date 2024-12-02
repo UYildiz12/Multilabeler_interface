@@ -1,0 +1,6 @@
+17:44:53 - INFO - Application starting with enhanced logging
+17:44:54 - INFO - Memory before creating labeler: 607.3 MB
+17:45:19 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+17:45:22 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+17:45:25 - INFO - NumExpr defaulting to 8 threads.
+17:46:58 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB

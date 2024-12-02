@@ -1,0 +1,13 @@
+18:43:01 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+18:43:09 - INFO - Application starting with enhanced logging
+18:43:09 - INFO - Memory after creating labeler:
+18:43:09 - INFO -   RSS: 373.2 MB
+18:43:09 - INFO -   VMS: 353.9 MB
+18:43:09 - INFO -   Percent: 2.3%
+18:43:12 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+18:43:00 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+18:43:06 - INFO - Memory before creating labeler:
+18:43:06 - INFO -   RSS: 372.2 MB
+18:43:06 - INFO -   VMS: 352.6 MB
+18:43:06 - INFO -   Percent: 2.3%
+18:43:01 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB

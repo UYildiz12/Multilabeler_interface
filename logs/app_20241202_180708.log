@@ -1,0 +1,13 @@
+18:10:43 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+18:15:34 - INFO - Memory changes during cleanup:
+18:15:34 - INFO - D:\Anaconda\Lib\site-packages\watchdog\observers\read_directory_changes.py:116: size=0 B (-256 B), count=0 (-2)
+18:15:34 - INFO - <frozen genericpath>:42: size=0 B (-200 B), count=0 (-4)
+18:15:34 - INFO - D:\Anaconda\Lib\tracemalloc.py:558: size=216 B (+160 B), count=4 (+3), average=54 B
+18:15:34 - INFO - Memory after cleanup:
+18:15:34 - INFO -   RSS: 535.9 MB
+18:15:34 - INFO -   VMS: 522.0 MB
+18:15:34 - INFO -   Percent: 3.3%
+18:15:46 - INFO - Memory changes during cleanup:
+18:15:46 - INFO - D:\Anaconda\Lib\tracemalloc.py:67: size=0 B (-125 KiB), count=0 (-1998)
+18:15:46 - INFO - D:\Anaconda\Lib\ctypes\__init__.py:64: size=62.6 KiB (+62.6 KiB), count=2 (+2), average=31.3 KiB
+18:15:46 - INFO - D:\Anaconda\Lib\logging\__init__.py:1213: size=402 B (-448 B), count=6 (-5), average=67 B

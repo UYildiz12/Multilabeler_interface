@@ -1,0 +1,12 @@
+18:14:11 - INFO -   D:\Anaconda\Lib\json\decoder.py:353: size=3966 KiB, count=38768, average=105 B
+18:14:11 - INFO -   <frozen importlib._bootstrap>:241: size=2679 KiB, count=25306, average=108 B
+18:14:11 - INFO -   D:\Anaconda\Lib\site-packages\altair\utils\core.py:733: size=1699 KiB, count=72, average=23.6 KiB
+18:14:11 - INFO -   C:\Users\user\Desktop\Labels-Local\app.py:809: size=659 KiB, count=7363, average=92 B
+18:14:11 - INFO -   C:\Users\user\Desktop\Labels-Local\app.py:224: size=514 KiB, count=5727, average=92 B
+18:14:11 - INFO -   D:\Anaconda\Lib\linecache.py:137: size=473 KiB, count=4734, average=102 B
+18:14:11 - INFO -   D:\Anaconda\Lib\copyreg.py:105: size=394 KiB, count=3134, average=129 B
+18:14:11 - INFO -   D:\Anaconda\Lib\re\__init__.py:185: size=339 KiB, count=227, average=1531 B
+18:15:05 - INFO - Memory changes during cleanup:
+18:15:05 - INFO - D:\Anaconda\Lib\tracemalloc.py:67: size=0 B (-125 KiB), count=0 (-1998)
+18:15:05 - INFO - D:\Anaconda\Lib\tracemalloc.py:558: size=440 B (+216 B), count=8 (+4), average=55 B
+18:15:05 - INFO - D:\Anaconda\Lib\logging\__init__.py:2148: size=0 B (-176 B), count=0 (-3)

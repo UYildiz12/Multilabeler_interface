@@ -1,0 +1,18 @@
+17:30:35 - INFO - Memory changes during cleanup:
+17:30:35 - INFO - D:\Anaconda\Lib\tracemalloc.py:115: size=0 B (-156 KiB), count=0 (-1999)
+17:30:35 - INFO - D:\Anaconda\Lib\tracemalloc.py:558: size=384 B (+216 B), count=7 (+4), average=55 B
+17:30:35 - INFO - D:\Anaconda\Lib\logging\__init__.py:2148: size=0 B (-176 B), count=0 (-3)
+17:30:35 - INFO - Memory after cleanup: 471.4 MB
+17:30:42 - INFO - Memory changes during cleanup:
+17:30:42 - INFO - D:\Anaconda\Lib\tracemalloc.py:115: size=0 B (-156 KiB), count=0 (-1999)
+17:30:42 - INFO - D:\Anaconda\Lib\tracemalloc.py:558: size=384 B (+216 B), count=7 (+4), average=55 B
+17:30:42 - INFO - D:\Anaconda\Lib\logging\__init__.py:2148: size=0 B (-176 B), count=0 (-3)
+17:30:42 - INFO - Memory after cleanup: 471.0 MB
+17:30:47 - INFO - Memory changes during cleanup:
+17:30:47 - INFO - D:\Anaconda\Lib\tracemalloc.py:115: size=0 B (-156 KiB), count=0 (-1998)
+17:30:47 - INFO - D:\Anaconda\Lib\ctypes\__init__.py:64: size=62.6 KiB (+62.6 KiB), count=2 (+2), average=31.3 KiB
+17:30:47 - INFO - D:\Anaconda\Lib\logging\__init__.py:1213: size=268 B (-384 B), count=4 (-4), average=67 B
+17:30:52 - INFO - Memory changes during cleanup:
+17:30:52 - INFO - D:\Anaconda\Lib\tracemalloc.py:115: size=0 B (-156 KiB), count=0 (-1998)
+17:30:52 - INFO - D:\Anaconda\Lib\ctypes\__init__.py:64: size=62.6 KiB (+62.6 KiB), count=2 (+2), average=31.3 KiB
+17:30:52 - INFO - D:\Anaconda\Lib\copy.py:280: size=7616 B (-752 B), count=119 (-12), average=64 B

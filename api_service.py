@@ -9,17 +9,60 @@ import time
 from weakref import WeakValueDictionary  # Add this import
 
 class APIService:
+    _instances = WeakValueDictionary()
+    
+    def __new__(cls, *args, **kwargs):
+        """Ensure single instance per session"""
+        session_id = id(st.session_state)
+        instance = cls._instances.get(session_id)
+        if instance is None:
+            instance = super().__new__(cls)
+            cls._instances[session_id] = instance
+        return instance
+    
     def __init__(self, base_url: str = None):
-        # Normalize base URL by removing trailing slash
-        self.base_url = (base_url or os.getenv('API_URL', 'https://multilabeler-interface-d9bb61fef429.herokuapp.com')).rstrip('/')
-        self.last_sync_time = datetime.now()
-        self.sync_interval = timedelta(seconds=30)  # Reduced from 30 to 10 seconds
-        self.session = self._create_session()
-        self._error_count = 0
-        self._max_errors = 3
-        self._reset_time = datetime.now()
-        self._response_cache = WeakValueDictionary()  # Use weak references for caching
-        self._cache_timeout = timedelta(minutes=5)
+        # Only initialize once
+        if not hasattr(self, '_initialized'):
+            # Normalize base URL by removing trailing slash
+            self.base_url = (base_url or os.getenv('API_URL', 'https://multilabeler-interface-d9bb61fef429.herokuapp.com')).rstrip('/')
+            self.last_sync_time = datetime.now()
+            self.sync_interval = timedelta(seconds=30)  # Reduced from 30 to 10 seconds
+            self.session = self._create_session()
+            self._error_count = 0
+            self._max_errors = 3
+            self._reset_time = datetime.now()
+            self._response_cache = WeakValueDictionary()  # Use weak references for caching
+            self._cache_timeout = timedelta(minutes=5)
+            self._initialized = True
+            # Register cleanup with streamlit session
+            self._register_cleanup()
+    
+    def _register_cleanup(self):
+        """Register cleanup handler with streamlit session"""
+        if hasattr(st.session_state, '_cleanup_handlers'):
+            st.session_state._cleanup_handlers.append(self._cleanup)
+    
+    def _cleanup(self):
+        """Enhanced cleanup procedure"""
+        try:
+            # Close current session
+            if hasattr(self, 'session'):
+                self.session.close()
+            
+            # Clear response cache
+            if hasattr(self, '_response_cache'):
+                self._response_cache.clear()
+            
+            # Remove instance from class registry
+            session_id = id(st.session_state)
+            if session_id in self.__class__._instances:
+                del self.__class__._instances[session_id]
+        except Exception as e:
+            logging.error(f"APIService cleanup error: {e}")
+    
+    def __del__(self):
+        """Ensure cleanup on deletion"""
+        self._cleanup()
 
     def _create_session(self):
         """Create a new session with improved retry configuration"""

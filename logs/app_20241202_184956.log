@@ -1,0 +1,110 @@
+18:49:58 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+18:50:05 - INFO - Application starting with enhanced logging
+18:50:05 - INFO - Top 10 memory allocations:
+18:50:05 - INFO -   <__array_function__ internals>:200: size=351 MiB, count=10, average=35.1 MiB
+18:50:05 - INFO -   D:\Anaconda\Lib\linecache.py:137: size=477 KiB, count=4775, average=102 B
+18:50:05 - INFO -   <frozen ntpath>:723: size=179 KiB, count=1635, average=112 B
+18:50:05 - INFO -   <frozen ntpath>:66: size=167 KiB, count=1650, average=104 B
+18:50:05 - INFO -   <frozen ntpath>:720: size=166 KiB, count=1635, average=104 B
+18:50:05 - INFO -   D:\Anaconda\Lib\selectors.py:314: size=144 KiB, count=4, average=36.0 KiB
+18:50:05 - INFO -   D:\Anaconda\Lib\inspect.py:1000: size=101 KiB, count=1, average=101 KiB
+18:50:05 - INFO -   D:\Anaconda\Lib\site-packages\streamlit\watcher\local_sources_watcher.py:176: size=64.2 KiB, count=2, average=32.1 KiB
+18:50:05 - INFO -   D:\Anaconda\Lib\inspect.py:997: size=50.7 KiB, count=1, average=50.7 KiB
+18:50:05 - INFO -   <frozen abc>:123: size=45.5 KiB, count=595, average=78 B
+18:50:08 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+18:50:13 - INFO - Application starting with enhanced logging
+18:50:14 - INFO - Top 10 memory allocations:
+18:50:14 - INFO -   <__array_function__ internals>:200: size=584 MiB, count=16, average=36.5 MiB
+18:50:14 - INFO -   D:\Anaconda\Lib\linecache.py:137: size=477 KiB, count=4775, average=102 B
+18:50:14 - INFO -   <frozen ntpath>:723: size=179 KiB, count=1635, average=112 B
+18:50:14 - INFO -   <frozen ntpath>:66: size=167 KiB, count=1650, average=104 B
+18:50:14 - INFO -   <frozen ntpath>:720: size=166 KiB, count=1635, average=104 B
+18:50:14 - INFO -   D:\Anaconda\Lib\inspect.py:1000: size=101 KiB, count=1, average=101 KiB
+18:50:14 - INFO -   D:\Anaconda\Lib\site-packages\streamlit\watcher\local_sources_watcher.py:176: size=64.2 KiB, count=2, average=32.1 KiB
+18:50:14 - INFO -   D:\Anaconda\Lib\inspect.py:997: size=50.7 KiB, count=1, average=50.7 KiB
+18:50:14 - INFO -   <frozen abc>:123: size=45.3 KiB, count=591, average=78 B
+18:50:14 - INFO -   D:\Anaconda\Lib\copyreg.py:105: size=30.6 KiB, count=244, average=128 B
+18:50:14 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+18:51:22 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+18:51:24 - INFO - Top 10 memory allocations:
+18:51:24 - INFO -   <__array_function__ internals>:200: size=818 MiB, count=22, average=37.2 MiB
+18:51:24 - INFO -   D:\Anaconda\Lib\linecache.py:137: size=477 KiB, count=4775, average=102 B
+18:51:24 - INFO -   <frozen ntpath>:723: size=179 KiB, count=1635, average=112 B
+18:51:24 - INFO -   <frozen ntpath>:66: size=167 KiB, count=1650, average=104 B
+18:51:24 - INFO -   <frozen ntpath>:720: size=166 KiB, count=1635, average=104 B
+18:51:24 - INFO -   D:\Anaconda\Lib\selectors.py:314: size=144 KiB, count=4, average=36.0 KiB
+18:51:24 - INFO -   D:\Anaconda\Lib\inspect.py:1000: size=101 KiB, count=1, average=101 KiB
+18:51:24 - INFO -   D:\Anaconda\Lib\site-packages\streamlit\watcher\local_sources_watcher.py:176: size=64.2 KiB, count=2, average=32.1 KiB
+18:51:24 - INFO -   <frozen abc>:123: size=55.2 KiB, count=717, average=79 B
+18:51:24 - INFO -   D:\Anaconda\Lib\inspect.py:997: size=50.7 KiB, count=1, average=50.7 KiB
+18:51:26 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+18:54:08 - INFO - Memory changes during cleanup:
+18:54:08 - INFO - D:\Anaconda\Lib\tracemalloc.py:115: size=0 B (-74.3 KiB), count=0 (-951)
+18:54:08 - INFO - D:\Anaconda\Lib\ctypes\__init__.py:64: size=62.6 KiB (+62.6 KiB), count=2 (+2), average=31.3 KiB
+18:54:08 - INFO - D:\Anaconda\Lib\tracemalloc.py:193: size=0 B (-44.4 KiB), count=0 (-947)
+18:49:56 - INFO - Memory after creating labeler:
+18:49:56 - INFO -   RSS: 251.2 MB
+18:49:56 - INFO -   VMS: 232.4 MB
+18:49:56 - INFO -   Percent: 1.5%
+18:49:57 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+18:50:00 - INFO - Memory before creating labeler:
+18:50:00 - INFO -   RSS: 371.4 MB
+18:50:00 - INFO -   VMS: 351.4 MB
+18:50:00 - INFO -   Percent: 2.3%
+18:50:01 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+18:50:05 - INFO - Memory before creating labeler:
+18:50:05 - INFO -   RSS: 489.8 MB
+18:50:05 - INFO -   VMS: 470.7 MB
+18:50:05 - INFO -   Percent: 3.0%
+18:50:06 - INFO - Memory after creating labeler:
+18:50:06 - INFO -   RSS: 490.6 MB
+18:50:06 - INFO -   VMS: 471.3 MB
+18:50:06 - INFO -   Percent: 3.0%
+18:50:07 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+18:50:11 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+18:51:18 - INFO - Memory before creating labeler:
+18:51:18 - INFO -   RSS: 838.8 MB
+18:51:18 - INFO -   VMS: 825.6 MB
+18:51:18 - INFO -   Percent: 5.1%
+18:51:20 - INFO - Memory after creating labeler:
+18:51:20 - INFO -   RSS: 839.5 MB
+18:51:20 - INFO -   VMS: 825.8 MB
+18:51:20 - INFO -   Percent: 5.1%
+18:54:10 - INFO - Top 10 memory allocations:
+18:54:10 - INFO -   <__array_function__ internals>:200: size=818 MiB, count=22, average=37.2 MiB
+18:54:10 - INFO -   D:\Anaconda\Lib\linecache.py:137: size=477 KiB, count=4775, average=102 B
+18:54:10 - INFO -   <frozen ntpath>:723: size=179 KiB, count=1635, average=112 B
+18:54:10 - INFO -   <frozen ntpath>:66: size=167 KiB, count=1650, average=104 B
+18:54:10 - INFO -   <frozen ntpath>:720: size=166 KiB, count=1635, average=104 B
+18:54:10 - INFO -   D:\Anaconda\Lib\inspect.py:1000: size=101 KiB, count=1, average=101 KiB
+18:54:10 - INFO -   D:\Anaconda\Lib\tracemalloc.py:193: size=89.6 KiB, count=1911, average=48 B
+18:54:10 - INFO -   <frozen abc>:123: size=87.9 KiB, count=893, average=101 B
+18:54:10 - INFO -   D:\Anaconda\Lib\tracemalloc.py:115: size=75.2 KiB, count=962, average=80 B
+18:54:10 - INFO -   D:\Anaconda\Lib\tracemalloc.py:125: size=66.9 KiB, count=952, average=72 B
+18:49:56 - INFO - Application starting with enhanced logging
+18:49:56 - INFO - Top 10 memory allocations:
+18:49:56 - INFO -   <__array_function__ internals>:200: size=117 MiB, count=4, average=29.2 MiB
+18:49:56 - INFO -   D:\Anaconda\Lib\linecache.py:137: size=466 KiB, count=4666, average=102 B
+18:49:56 - INFO -   <frozen ntpath>:723: size=179 KiB, count=1635, average=112 B
+18:49:56 - INFO -   <frozen ntpath>:66: size=167 KiB, count=1650, average=104 B
+18:49:56 - INFO -   <frozen ntpath>:720: size=166 KiB, count=1635, average=104 B
+18:49:56 - INFO -   D:\Anaconda\Lib\inspect.py:1000: size=101 KiB, count=1, average=101 KiB
+18:49:56 - INFO -   D:\Anaconda\Lib\site-packages\streamlit\watcher\local_sources_watcher.py:176: size=64.2 KiB, count=2, average=32.1 KiB
+18:49:56 - INFO -   D:\Anaconda\Lib\inspect.py:997: size=50.7 KiB, count=1, average=50.7 KiB
+18:49:56 - INFO -   <frozen abc>:123: size=35.8 KiB, count=465, average=79 B
+18:49:56 - INFO -   D:\Anaconda\Lib\re\_compiler.py:759: size=13.0 KiB, count=17, average=782 B
+18:49:56 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+18:49:59 - INFO - Application starting with enhanced logging
+18:50:01 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+18:50:09 - INFO - Application starting with enhanced logging
+18:50:15 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+18:51:20 - INFO - Application starting with enhanced logging
+18:51:24 - INFO - Memory before creating labeler:
+18:51:24 - INFO -   RSS: 958.0 MB
+18:51:24 - INFO -   VMS: 944.6 MB
+18:51:24 - INFO -   Percent: 5.9%
+18:51:27 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+18:54:13 - INFO - Memory changes during cleanup:
+18:54:13 - INFO - D:\Anaconda\Lib\tracemalloc.py:115: size=0 B (-74.2 KiB), count=0 (-950)
+18:54:13 - INFO - D:\Anaconda\Lib\ctypes\__init__.py:64: size=62.6 KiB (+62.6 KiB), count=2 (+2), average=31.3 KiB
+18:54:13 - INFO - D:\Anaconda\Lib\tracemalloc.py:193: size=0 B (-43.5 KiB), count=0 (-928)

@@ -1,0 +1,11 @@
+17:28:15 - INFO - Memory changes during image rendering:
+17:28:15 - INFO - D:\Anaconda\Lib\site-packages\matplotlib\cbook\__init__.py:714: size=64.1 KiB (+64.1 KiB), count=2 (+2), average=32.0 KiB
+17:28:15 - INFO - D:\Anaconda\Lib\site-packages\matplotlib\transforms.py:209: size=53.8 KiB (+53.7 KiB), count=707 (+706), average=78 B
+17:28:15 - INFO - D:\Anaconda\Lib\site-packages\matplotlib\text.py:997: size=29.4 KiB (+29.4 KiB), count=38 (+38), average=792 B
+17:28:47 - INFO - Application starting with enhanced logging
+17:28:47 - INFO - Memory before creating labeler: 439.1 MB
+17:28:47 - INFO - Memory after creating labeler: 439.1 MB
+17:30:24 - INFO - Memory changes during cleanup:
+17:30:24 - INFO - D:\Anaconda\Lib\tracemalloc.py:115: size=0 B (-156 KiB), count=0 (-1999)
+17:30:24 - INFO - D:\Anaconda\Lib\tracemalloc.py:558: size=440 B (+272 B), count=8 (+5), average=55 B
+17:30:24 - INFO - D:\Anaconda\Lib\logging\__init__.py:2148: size=0 B (-176 B), count=0 (-3)

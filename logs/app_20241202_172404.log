@@ -1,0 +1,18 @@
+17:25:15 - INFO - Application starting with enhanced logging
+17:25:15 - INFO - Memory before creating labeler: 244.9 MB
+17:25:15 - INFO - Application starting with enhanced logging
+17:25:15 - INFO - Memory after creating labeler: 245.0 MB
+17:25:17 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+17:25:21 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+17:25:24 - INFO - Application starting with enhanced logging
+17:29:11 - INFO - Application starting with enhanced logging
+17:30:32 - INFO - Memory changes during cleanup:
+17:30:32 - INFO - <frozen genericpath>:42: size=0 B (-200 B), count=0 (-4)
+17:30:32 - INFO - D:\Anaconda\Lib\tracemalloc.py:558: size=216 B (+160 B), count=4 (+3), average=54 B
+17:30:32 - INFO - <frozen ntpath>:145: size=0 B (-112 B), count=0 (-1)
+17:24:04 - INFO - Application starting with enhanced logging
+17:24:04 - INFO - Memory before creating labeler: 250.3 MB
+17:25:17 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+17:25:22 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+17:25:26 - INFO - NumExpr defaulting to 8 threads.
+17:27:41 - INFO - Application starting with enhanced logging

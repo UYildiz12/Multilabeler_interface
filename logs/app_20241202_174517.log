@@ -1,0 +1,24 @@
+17:45:17 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+17:45:20 - INFO - Application starting with enhanced logging
+17:45:22 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+17:47:00 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+17:45:17 - INFO - Application starting with enhanced logging
+17:45:18 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+17:45:20 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+17:45:23 - INFO - Application starting with enhanced logging
+17:45:23 - INFO - Memory before creating labeler: 610.0 MB
+17:45:23 - INFO - Memory after creating labeler: 610.0 MB
+17:45:50 - INFO - Memory changes during image rendering:
+17:45:50 - INFO - <frozen importlib._bootstrap_external>:729: size=19.1 MiB (+376 KiB), count=126300 (+2954), average=159 B
+17:45:50 - INFO - D:\Anaconda\Lib\selectors.py:314: size=504 B (-144 KiB), count=9 (+4), average=56 B
+17:45:50 - INFO - D:\Anaconda\Lib\site-packages\streamlit\elements\image.py:279: size=89.0 KiB (+89.0 KiB), count=1 (+1), average=89.0 KiB
+17:45:58 - INFO - Application starting with enhanced logging
+17:46:59 - INFO - Application starting with enhanced logging
+17:47:32 - ERROR - Error during cleanup: Event loop is closed
+17:47:39 - ERROR - Error during cleanup: Event loop is closed
+17:47:43 - INFO - Memory changes during cleanup:
+17:47:43 - INFO - D:\Anaconda\Lib\tracemalloc.py:560: size=168 B (+168 B), count=2 (+2), average=84 B
+17:47:43 - INFO - D:\Anaconda\Lib\tracemalloc.py:423: size=168 B (+168 B), count=2 (+2), average=84 B
+17:47:43 - INFO - C:\Users\user\Desktop\Labels-Local\app.py:755: size=72 B (+72 B), count=2 (+2), average=36 B
+17:47:43 - INFO - Memory after cleanup: 792.9 MB
+17:47:44 - ERROR - Error during cleanup: Event loop is closed

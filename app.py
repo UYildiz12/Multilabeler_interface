@@ -28,15 +28,15 @@ class StreamlitImageLabeler:
     ]
 
     def __init__(self, images):
-        self.image_cache = WeakValueDictionary()  # Use weak references for image cache
-        self._images = images  # Store original image list
+        self.image_cache = WeakValueDictionary()  
+        self._images = images  
         self.api_service = APIService()
         self.sync_lock = Lock()
         
         self.sync_interval = timedelta(seconds=2)
         self.last_sync = datetime.now()
         self.last_gc = datetime.now()
-        self.gc_interval = timedelta(minutes=5)  # Run GC every 5 minutes
+        self.gc_interval = timedelta(minutes=2)  
         
         atexit.register(self.cleanup)
         
@@ -49,6 +49,9 @@ class StreamlitImageLabeler:
         self.last_memory_check = datetime.now()
         self.memory_check_interval = timedelta(minutes=1)
         self.memory_threshold = 80  # Percentage
+
+        # Add cleanup handler for streamlit session
+        self._setup_cleanup_handler()
     
     @property
     def images(self):
@@ -757,6 +760,36 @@ class StreamlitImageLabeler:
                     self.update_shared_progress(latest_progress)
                 self.last_sync = datetime.now()
 
+    def _setup_cleanup_handler(self):
+        """Setup cleanup handler for streamlit session"""
+        if not hasattr(st.session_state, '_cleanup_registered'):
+            st.session_state._cleanup_registered = True
+            st.session_state._cleanup_handlers = []
+            
+            def cleanup_session():
+                try:
+                    # Release any active locks
+                    if hasattr(st.session_state, 'active_category'):
+                        self.release_lock()
+                    
+                    # Clear image cache
+                    self.image_cache.clear()
+                    
+                    # Clear large session state variables
+                    for key in list(st.session_state.keys()):
+                        if key.startswith(('image_', 'cache_', 'buffer_')):
+                            del st.session_state[key]
+                    
+                    # Force garbage collection
+                    gc.collect()
+                    
+                    # Close matplotlib figures
+                    plt.close('all')
+                except Exception as e:
+                    logging.error(f"Error during session cleanup: {e}")
+            
+            st.session_state._cleanup_handlers.append(cleanup_session)
+
 def main():
     if "loading_state" not in st.session_state:
         st.session_state.loading_state = "not_started"
@@ -784,6 +817,15 @@ def main():
         st.error(f"An error occurred: {str(e)}")
         gc.collect()
 
+    # Add session state cleanup on page refresh/close
+    if 'initialized' not in st.session_state:
+        for handler in getattr(st.session_state, '_cleanup_handlers', []):
+            try:
+                handler()
+            except Exception as e:
+                logging.error(f"Cleanup handler error: {e}")
+        st.session_state.initialized = True
+
 if __name__ == "__main__":
     main()
 
@@ -792,5 +834,23 @@ import atexit
 def module_cleanup():
     plt.close('all')
     gc.collect()
+
+atexit.register(module_cleanup)
+
+# Register cleanup for module exit
+def module_cleanup():
+    try:
+        # Clear all matplotlib figures
+        plt.close('all')
+        
+        # Clear streamlit session state
+        for key in list(getattr(st.session_state, '__dict__', {}).keys()):
+            if not key.startswith('_'):
+                delattr(st.session_state, key)
+        
+        # Force garbage collection
+        gc.collect()
+    except Exception as e:
+        logging.error(f"Module cleanup error: {e}")
 
 atexit.register(module_cleanup)

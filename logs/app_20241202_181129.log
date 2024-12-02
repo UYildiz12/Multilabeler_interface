@@ -1,0 +1,27 @@
+18:11:56 - INFO - Memory after creating labeler:
+18:11:56 - INFO -   RSS: 505.3 MB
+18:11:56 - INFO -   VMS: 491.3 MB
+18:11:56 - INFO -   Percent: 3.1%
+18:12:35 - INFO - Top 10 memory allocations:
+18:12:35 - INFO -   <__array_function__ internals>:200: size=117 MiB, count=6, average=19.5 MiB
+18:12:35 - INFO -   <frozen importlib._bootstrap_external>:729: size=18.8 MiB, count=122589, average=161 B
+18:12:35 - INFO -   D:\Anaconda\Lib\json\decoder.py:353: size=3966 KiB, count=38763, average=105 B
+18:12:35 - INFO -   <frozen importlib._bootstrap>:241: size=2679 KiB, count=25306, average=108 B
+18:12:35 - INFO -   D:\Anaconda\Lib\site-packages\altair\utils\core.py:733: size=1699 KiB, count=72, average=23.6 KiB
+18:12:35 - INFO -   C:\Users\user\Desktop\Labels-Local\app.py:809: size=659 KiB, count=7363, average=92 B
+18:12:35 - INFO -   C:\Users\user\Desktop\Labels-Local\app.py:224: size=514 KiB, count=5727, average=92 B
+18:12:35 - INFO -   D:\Anaconda\Lib\linecache.py:137: size=473 KiB, count=4734, average=102 B
+18:12:35 - INFO -   D:\Anaconda\Lib\copyreg.py:105: size=340 KiB, count=2708, average=129 B
+18:12:35 - INFO -   D:\Anaconda\Lib\re\__init__.py:185: size=339 KiB, count=227, average=1531 B
+18:13:37 - INFO - Application starting with enhanced logging
+18:15:18 - INFO - Top 10 memory allocations:
+18:15:18 - INFO -   <__array_function__ internals>:200: size=117 MiB, count=6, average=19.5 MiB
+18:15:18 - INFO -   <frozen importlib._bootstrap_external>:729: size=18.8 MiB, count=122589, average=161 B
+18:15:18 - INFO -   D:\Anaconda\Lib\json\decoder.py:353: size=3652 KiB, count=34377, average=109 B
+18:15:18 - INFO -   <frozen importlib._bootstrap>:241: size=2679 KiB, count=25305, average=108 B
+18:15:18 - INFO -   D:\Anaconda\Lib\site-packages\altair\utils\core.py:733: size=1699 KiB, count=72, average=23.6 KiB
+18:15:18 - INFO -   D:\Anaconda\Lib\tracemalloc.py:125: size=1462 KiB, count=20790, average=72 B
+18:15:18 - INFO -   D:\Anaconda\Lib\tracemalloc.py:193: size=1068 KiB, count=22787, average=48 B
+18:15:18 - INFO -   D:\Anaconda\Lib\tracemalloc.py:498: size=975 KiB, count=20794, average=48 B
+18:15:18 - INFO -   D:\Anaconda\Lib\linecache.py:137: size=473 KiB, count=4734, average=102 B
+18:15:18 - INFO -   D:\Anaconda\Lib\copyreg.py:105: size=416 KiB, count=3313, average=129 B

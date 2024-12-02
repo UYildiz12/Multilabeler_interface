@@ -1,0 +1,139 @@
+2024-12-02 17:05:40,296 - INFO - Starting application, logging to logs/memory_profile_20241202_170540.log
+2024-12-02 17:07:02,636 - INFO - Starting application, logging to logs/memory_profile_20241202_170702.log
+2024-12-02 17:07:03,065 - INFO - Memory usage before creating labeler: 364.53 MB
+2024-12-02 17:07:04,999 - INFO - Starting application, logging to logs/memory_profile_20241202_170704.log
+2024-12-02 17:07:05,000 - INFO - Memory usage before creating labeler: 364.53 MB
+2024-12-02 17:07:06,938 - INFO - Starting application, logging to logs/memory_profile_20241202_170706.log
+2024-12-02 17:07:06,939 - INFO - Memory usage before creating labeler: 364.53 MB
+2024-12-02 17:07:06,984 - INFO - Starting application, logging to logs/memory_profile_20241202_170706.log
+2024-12-02 17:07:06,986 - INFO - Memory usage before creating labeler: 364.54 MB
+2024-12-02 17:07:06,989 - INFO - Memory usage after creating labeler: 364.54 MB
+2024-12-02 17:07:07,022 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+2024-12-02 17:07:10,190 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+2024-12-02 17:07:10,704 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+2024-12-02 17:07:11,040 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+2024-12-02 17:07:11,338 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+2024-12-02 17:07:12,780 - INFO - Starting application, logging to logs/memory_profile_20241202_170712.log
+2024-12-02 17:07:12,781 - INFO - Memory usage before creating labeler: 365.72 MB
+2024-12-02 17:07:12,782 - INFO - Memory usage after creating labeler: 365.72 MB
+2024-12-02 17:07:12,808 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+2024-12-02 17:07:14,003 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+2024-12-02 17:07:14,533 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+2024-12-02 17:07:14,821 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+2024-12-02 17:07:15,122 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+2024-12-02 17:07:15,434 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+2024-12-02 17:07:15,788 - INFO - Starting application, logging to logs/memory_profile_20241202_170715.log
+2024-12-02 17:07:15,789 - INFO - Memory usage before creating labeler: 367.50 MB
+2024-12-02 17:07:15,791 - INFO - Memory usage after creating labeler: 367.50 MB
+2024-12-02 17:07:18,465 - INFO - NumExpr defaulting to 8 threads.
+2024-12-02 17:07:38,655 - INFO - Memory changes during image rendering:
+2024-12-02 17:07:38,656 - INFO - <frozen importlib._bootstrap_external>:729: size=19.0 MiB (+377 KiB), count=125492 (+2962), average=159 B
+2024-12-02 17:07:38,658 - INFO - D:\Anaconda\Lib\site-packages\streamlit\elements\image.py:279: size=94.8 KiB (+94.8 KiB), count=1 (+1), average=94.8 KiB
+2024-12-02 17:07:38,660 - INFO - D:\Anaconda\Lib\tracemalloc.py:558: size=73.1 KiB (+73.0 KiB), count=1335 (+1334), average=56 B
+2024-12-02 17:07:45,533 - INFO - Starting application, logging to logs/memory_profile_20241202_170745.log
+2024-12-02 17:07:45,534 - INFO - Memory usage before creating labeler: 480.23 MB
+2024-12-02 17:07:45,536 - INFO - Memory usage after creating labeler: 480.23 MB
+2024-12-02 17:07:46,310 - INFO - Starting application, logging to logs/memory_profile_20241202_170746.log
+2024-12-02 17:07:46,310 - INFO - Memory usage before creating labeler: 480.43 MB
+2024-12-02 17:07:46,312 - INFO - Memory usage after creating labeler: 480.43 MB
+2024-12-02 17:08:06,213 - INFO - Memory changes during image rendering:
+2024-12-02 17:08:06,215 - INFO - D:\Anaconda\Lib\site-packages\streamlit\elements\image.py:279: size=94.8 KiB (+94.8 KiB), count=1 (+1), average=94.8 KiB
+2024-12-02 17:08:06,217 - INFO - D:\Anaconda\Lib\site-packages\matplotlib\cbook\__init__.py:714: size=64.1 KiB (+64.1 KiB), count=2 (+2), average=32.0 KiB
+2024-12-02 17:08:06,219 - INFO - D:\Anaconda\Lib\site-packages\matplotlib\transforms.py:209: size=105 KiB (+53.8 KiB), count=1384 (+708), average=78 B
+2024-12-02 17:08:06,510 - INFO - Starting application, logging to logs/memory_profile_20241202_170806.log
+2024-12-02 17:08:06,511 - INFO - Memory usage before creating labeler: 492.10 MB
+2024-12-02 17:08:06,513 - INFO - Memory usage after creating labeler: 492.10 MB
+2024-12-02 17:08:26,172 - INFO - Memory changes during image rendering:
+2024-12-02 17:08:26,174 - INFO - D:\Anaconda\Lib\site-packages\streamlit\elements\image.py:279: size=184 KiB (+89.0 KiB), count=2 (+1), average=91.9 KiB
+2024-12-02 17:08:26,175 - INFO - D:\Anaconda\Lib\site-packages\matplotlib\cbook\__init__.py:714: size=64.1 KiB (+64.1 KiB), count=2 (+2), average=32.0 KiB
+2024-12-02 17:08:26,177 - INFO - D:\Anaconda\Lib\site-packages\matplotlib\transforms.py:209: size=53.9 KiB (+53.8 KiB), count=709 (+708), average=78 B
+2024-12-02 17:08:32,894 - INFO - Starting application, logging to logs/memory_profile_20241202_170832.log
+2024-12-02 17:08:32,895 - INFO - Memory usage before creating labeler: 508.13 MB
+2024-12-02 17:08:32,896 - INFO - Memory usage after creating labeler: 508.14 MB
+2024-12-02 17:08:52,844 - INFO - Memory changes during image rendering:
+2024-12-02 17:14:49,107 - INFO - D:\Anaconda\Lib\site-packages\matplotlib\cbook\__init__.py:714: size=64.1 KiB (+64.1 KiB), count=2 (+2), average=32.0 KiB
+2024-12-02 17:14:49,109 - INFO - D:\Anaconda\Lib\site-packages\matplotlib\transforms.py:209: size=53.6 KiB (+53.6 KiB), count=704 (+703), average=78 B
+2024-12-02 17:14:49,112 - INFO - D:\Anaconda\Lib\site-packages\matplotlib\text.py:997: size=29.4 KiB (+29.4 KiB), count=38 (+38), average=792 B
+2024-12-02 17:14:49,114 - INFO - Memory usage after image render: 558.84 MB
+2024-12-02 17:14:49,471 - INFO - Starting application, logging to logs/memory_profile_20241202_171449.log
+2024-12-02 17:14:49,473 - INFO - Memory usage before creating labeler: 513.36 MB
+2024-12-02 17:14:49,474 - INFO - Memory usage after creating labeler: 513.36 MB
+2024-12-02 17:15:10,617 - INFO - Memory changes during image rendering:
+2024-12-02 17:15:10,619 - INFO - D:\Anaconda\Lib\site-packages\streamlit\elements\image.py:279: size=204 KiB (+115 KiB), count=2 (+1), average=102 KiB
+2024-12-02 17:15:10,621 - INFO - D:\Anaconda\Lib\site-packages\matplotlib\cbook\__init__.py:714: size=64.1 KiB (+64.1 KiB), count=2 (+2), average=32.0 KiB
+2024-12-02 17:15:10,622 - INFO - D:\Anaconda\Lib\site-packages\matplotlib\transforms.py:209: size=53.8 KiB (+53.8 KiB), count=708 (+707), average=78 B
+2024-12-02 17:15:40,279 - INFO - Starting application, logging to logs/memory_profile_20241202_171540.log
+2024-12-02 17:15:40,282 - INFO - Memory usage before creating labeler: 522.66 MB
+2024-12-02 17:15:40,289 - INFO - Memory usage after creating labeler: 522.66 MB
+2024-12-02 17:15:41,620 - INFO - Starting application, logging to logs/memory_profile_20241202_171541.log
+2024-12-02 17:15:41,622 - INFO - Memory usage before creating labeler: 542.55 MB
+2024-12-02 17:15:41,626 - INFO - Memory usage after creating labeler: 542.57 MB
+2024-12-02 17:16:03,862 - INFO - Memory changes during image rendering:
+2024-12-02 17:16:03,863 - INFO - D:\Anaconda\Lib\site-packages\matplotlib\image.py:204: size=0 B (-18.1 MiB), count=0 (-4)
+2024-12-02 17:16:03,865 - INFO - D:\Anaconda\Lib\site-packages\numpy\ma\core.py:2820: size=0 B (-9264 KiB), count=0 (-2)
+2024-12-02 17:16:03,866 - INFO - D:\Anaconda\Lib\site-packages\matplotlib\colors.py:712: size=0 B (-9264 KiB), count=0 (-2)
+2024-12-02 17:16:05,761 - INFO - Memory changes during cleanup:
+2024-12-02 17:16:05,761 - INFO - D:\Anaconda\Lib\json\decoder.py:353: size=3652 KiB (-284 KiB), count=34376 (-3957), average=109 B
+2024-12-02 17:16:05,762 - INFO - C:\Users\user\Desktop\Labels-Local\app.py:213: size=0 B (-193 KiB), count=0 (-2144)
+2024-12-02 17:16:05,763 - INFO - C:\Users\user\Desktop\Labels-Local\app.py:212: size=0 B (-15.9 KiB), count=0 (-3)
+2024-12-02 17:16:05,763 - INFO - Memory usage after cleanup: 433.23 MB
+2024-12-02 17:16:07,674 - INFO - Memory changes during cleanup:
+2024-12-02 17:16:07,675 - INFO - D:\Anaconda\Lib\tracemalloc.py:115: size=0 B (-156 KiB), count=0 (-1999)
+2024-12-02 17:16:07,676 - INFO - D:\Anaconda\Lib\tracemalloc.py:558: size=94.0 KiB (+93.9 KiB), count=2005 (+2002), average=48 B
+2024-12-02 17:16:07,676 - INFO - D:\Anaconda\Lib\tracemalloc.py:193: size=0 B (-93.5 KiB), count=0 (-1995)
+2024-12-02 17:16:07,677 - INFO - Memory usage after cleanup: 440.33 MB
+2024-12-02 17:16:09,508 - INFO - Memory changes during cleanup:
+2024-12-02 17:16:09,508 - INFO - D:\Anaconda\Lib\tracemalloc.py:560: size=160 B (+160 B), count=2 (+2), average=80 B
+2024-12-02 17:16:09,509 - INFO - D:\Anaconda\Lib\tracemalloc.py:423: size=160 B (+160 B), count=2 (+2), average=80 B
+2024-12-02 17:16:09,509 - INFO - C:\Users\user\Desktop\Labels-Local\app.py:770: size=72 B (+72 B), count=2 (+2), average=36 B
+2024-12-02 17:16:09,510 - INFO - Memory usage after cleanup: 432.03 MB
+2024-12-02 17:16:11,919 - INFO - Memory changes during cleanup:
+2024-12-02 17:16:11,920 - INFO - D:\Anaconda\Lib\tracemalloc.py:115: size=0 B (-156 KiB), count=0 (-1999)
+2024-12-02 17:16:11,922 - INFO - D:\Anaconda\Lib\tracemalloc.py:558: size=94.0 KiB (+93.9 KiB), count=2005 (+2002), average=48 B
+2024-12-02 17:16:11,923 - INFO - D:\Anaconda\Lib\tracemalloc.py:193: size=0 B (-93.5 KiB), count=0 (-1995)
+2024-12-02 17:16:11,924 - INFO - Memory usage after cleanup: 440.11 MB
+2024-12-02 17:16:14,674 - INFO - Memory changes during cleanup:
+2024-12-02 17:16:14,674 - INFO - D:\Anaconda\Lib\tracemalloc.py:560: size=128 B (+128 B), count=2 (+2), average=64 B
+2024-12-02 17:16:14,676 - INFO - D:\Anaconda\Lib\tracemalloc.py:423: size=128 B (+128 B), count=2 (+2), average=64 B
+2024-12-02 17:16:14,676 - INFO - C:\Users\user\Desktop\Labels-Local\app.py:770: size=72 B (+72 B), count=2 (+2), average=36 B
+2024-12-02 17:16:14,677 - INFO - Memory usage after cleanup: 432.22 MB
+2024-12-02 17:16:17,356 - INFO - Memory changes during cleanup:
+2024-12-02 17:16:17,356 - INFO - D:\Anaconda\Lib\tracemalloc.py:115: size=0 B (-156 KiB), count=0 (-1999)
+2024-12-02 17:16:17,357 - INFO - D:\Anaconda\Lib\tracemalloc.py:558: size=94.0 KiB (+93.9 KiB), count=2005 (+2002), average=48 B
+2024-12-02 17:16:17,358 - INFO - D:\Anaconda\Lib\tracemalloc.py:193: size=0 B (-93.5 KiB), count=0 (-1995)
+2024-12-02 17:16:17,359 - INFO - Memory usage after cleanup: 440.34 MB
+2024-12-02 17:16:20,369 - INFO - Memory changes during cleanup:
+2024-12-02 17:16:20,370 - INFO - D:\Anaconda\Lib\tracemalloc.py:115: size=0 B (-156 KiB), count=0 (-1999)
+2024-12-02 17:16:20,372 - INFO - D:\Anaconda\Lib\tracemalloc.py:558: size=94.0 KiB (+93.9 KiB), count=2005 (+2002), average=48 B
+2024-12-02 17:16:20,373 - INFO - D:\Anaconda\Lib\tracemalloc.py:193: size=0 B (-93.5 KiB), count=0 (-1995)
+2024-12-02 17:16:20,376 - INFO - Memory usage after cleanup: 440.80 MB
+2024-12-02 17:16:23,563 - INFO - Memory changes during cleanup:
+2024-12-02 17:16:23,564 - INFO - D:\Anaconda\Lib\tracemalloc.py:558: size=160 B (+104 B), count=3 (+2), average=53 B
+2024-12-02 17:16:23,565 - INFO - D:\Anaconda\Lib\tracemalloc.py:560: size=88 B (+88 B), count=2 (+2), average=44 B
+2024-12-02 17:16:23,565 - INFO - D:\Anaconda\Lib\tracemalloc.py:423: size=80 B (+80 B), count=2 (+2), average=40 B
+2024-12-02 17:16:23,566 - INFO - Memory usage after cleanup: 438.77 MB
+2024-12-02 17:16:26,129 - INFO - Memory changes during cleanup:
+2024-12-02 17:16:26,130 - INFO - D:\Anaconda\Lib\tracemalloc.py:115: size=0 B (-156 KiB), count=0 (-1999)
+2024-12-02 17:16:26,133 - INFO - D:\Anaconda\Lib\tracemalloc.py:558: size=94.0 KiB (+93.9 KiB), count=2005 (+2002), average=48 B
+2024-12-02 17:16:26,134 - INFO - D:\Anaconda\Lib\tracemalloc.py:193: size=0 B (-93.5 KiB), count=0 (-1995)
+2024-12-02 17:16:26,135 - INFO - Memory usage after cleanup: 439.30 MB
+2024-12-02 17:16:28,254 - INFO - Memory changes during cleanup:
+2024-12-02 17:16:28,254 - INFO - D:\Anaconda\Lib\tracemalloc.py:558: size=1432 B (+1376 B), count=26 (+25), average=55 B
+2024-12-02 17:16:28,256 - INFO - D:\Anaconda\Lib\email\message.py:511: size=0 B (-1008 B), count=0 (-18)
+2024-12-02 17:16:28,256 - INFO - D:\Anaconda\Lib\weakref.py:637: size=0 B (-224 B), count=0 (-4)
+2024-12-02 17:16:28,257 - INFO - Memory usage after cleanup: 430.97 MB
+2024-12-02 17:16:30,026 - INFO - Memory changes during cleanup:
+2024-12-02 17:16:30,027 - INFO - D:\Anaconda\Lib\tracemalloc.py:115: size=0 B (-156 KiB), count=0 (-1999)
+2024-12-02 17:16:30,028 - INFO - D:\Anaconda\Lib\ctypes\__init__.py:64: size=62.6 KiB (+62.6 KiB), count=2 (+2), average=31.3 KiB
+2024-12-02 17:16:30,028 - INFO - D:\Anaconda\Lib\tracemalloc.py:558: size=440 B (+328 B), count=8 (+6), average=55 B
+2024-12-02 17:16:30,029 - INFO - Memory usage after cleanup: 438.40 MB
+2024-12-02 17:16:31,964 - INFO - Memory changes during cleanup:
+2024-12-02 17:16:31,964 - INFO - D:\Anaconda\Lib\tracemalloc.py:115: size=0 B (-156 KiB), count=0 (-1999)
+2024-12-02 17:16:31,965 - INFO - D:\Anaconda\Lib\logging\__init__.py:2148: size=0 B (-288 B), count=0 (-5)
+2024-12-02 17:16:31,966 - INFO - D:\Anaconda\Lib\tracemalloc.py:558: size=440 B (+272 B), count=8 (+5), average=55 B
+2024-12-02 17:16:31,966 - INFO - Memory usage after cleanup: 439.22 MB
+2024-12-02 17:16:34,059 - INFO - Memory changes during cleanup:
+2024-12-02 17:16:34,059 - INFO - D:\Anaconda\Lib\tracemalloc.py:115: size=0 B (-156 KiB), count=0 (-1999)
+2024-12-02 17:16:34,061 - INFO - D:\Anaconda\Lib\logging\__init__.py:2148: size=0 B (-288 B), count=0 (-5)
+2024-12-02 17:16:34,061 - INFO - D:\Anaconda\Lib\tracemalloc.py:558: size=440 B (+272 B), count=8 (+5), average=55 B
+2024-12-02 17:16:34,062 - INFO - Memory usage after cleanup: 439.97 MB

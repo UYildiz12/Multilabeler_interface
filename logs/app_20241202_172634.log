@@ -1,0 +1,4 @@
+17:28:22 - INFO - Memory changes during image rendering:
+17:28:22 - INFO - D:\Anaconda\Lib\tracemalloc.py:505: size=1268 KiB (+898 KiB), count=12648 (+8521), average=103 B
+17:28:22 - INFO - D:\Anaconda\Lib\tracemalloc.py:499: size=576 KiB (+432 KiB), count=1 (+0), average=576 KiB
+17:28:22 - INFO - D:\Anaconda\Lib\tracemalloc.py:193: size=585 KiB (+399 KiB), count=12483 (+8519), average=48 B

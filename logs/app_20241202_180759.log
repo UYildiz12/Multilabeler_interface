@@ -1,0 +1,38 @@
+18:08:23 - INFO - Memory changes during image rendering:
+18:08:23 - INFO - D:\Anaconda\Lib\tracemalloc.py:67: size=0 B (-125 KiB), count=0 (-1994)
+18:08:23 - INFO - D:\Anaconda\Lib\site-packages\matplotlib\cbook\__init__.py:714: size=64.1 KiB (+64.1 KiB), count=2 (+2), average=32.0 KiB
+18:08:23 - INFO - D:\Anaconda\Lib\site-packages\matplotlib\transforms.py:209: size=53.8 KiB (+53.7 KiB), count=707 (+706), average=78 B
+18:08:47 - INFO - Memory changes during image rendering:
+18:08:47 - INFO - D:\Anaconda\Lib\site-packages\streamlit\elements\image.py:279: size=198 KiB (+96.1 KiB), count=2 (+1), average=99.1 KiB
+18:08:47 - INFO - D:\Anaconda\Lib\site-packages\matplotlib\cbook\__init__.py:714: size=64.1 KiB (+64.1 KiB), count=2 (+2), average=32.0 KiB
+18:08:47 - INFO - D:\Anaconda\Lib\site-packages\matplotlib\transforms.py:209: size=53.4 KiB (+53.4 KiB), count=701 (+700), average=78 B
+18:09:12 - INFO - Memory changes during image rendering:
+18:09:12 - INFO - D:\Anaconda\Lib\site-packages\matplotlib\cbook\__init__.py:714: size=64.1 KiB (+64.1 KiB), count=2 (+2), average=32.0 KiB
+18:09:12 - INFO - D:\Anaconda\Lib\site-packages\matplotlib\transforms.py:209: size=53.9 KiB (+53.8 KiB), count=709 (+708), average=78 B
+18:09:12 - INFO - D:\Anaconda\Lib\site-packages\matplotlib\text.py:997: size=29.4 KiB (+29.4 KiB), count=38 (+38), average=792 B
+18:09:36 - INFO - Memory changes during image rendering:
+18:09:36 - INFO - D:\Anaconda\Lib\site-packages\streamlit\elements\image.py:279: size=177 KiB (+81.3 KiB), count=2 (+1), average=88.7 KiB
+18:09:36 - INFO - D:\Anaconda\Lib\site-packages\matplotlib\cbook\__init__.py:714: size=64.1 KiB (+64.1 KiB), count=2 (+2), average=32.0 KiB
+18:09:36 - INFO - D:\Anaconda\Lib\site-packages\matplotlib\transforms.py:209: size=53.9 KiB (+53.8 KiB), count=709 (+708), average=78 B
+18:09:42 - INFO - Memory after cleanup: 2.9%
+18:10:15 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+18:10:23 - INFO - Application starting with enhanced logging
+18:10:23 - INFO - Memory before creating labeler:
+18:10:23 - INFO -   RSS: 484.8 MB
+18:10:23 - INFO -   VMS: 470.6 MB
+18:10:23 - INFO -   Percent: 3.0%
+18:11:18 - INFO - D:\Anaconda\Lib\tracemalloc.py:67: size=0 B (-125 KiB), count=0 (-1994)
+18:11:18 - INFO - D:\Anaconda\Lib\site-packages\streamlit\elements\image.py:279: size=81.3 KiB (+81.3 KiB), count=1 (+1), average=81.3 KiB
+18:11:18 - INFO - D:\Anaconda\Lib\site-packages\matplotlib\cbook\__init__.py:714: size=64.1 KiB (+64.1 KiB), count=2 (+2), average=32.0 KiB
+18:12:58 - INFO - Memory after creating labeler:
+18:12:58 - INFO -   RSS: 505.5 MB
+18:12:58 - INFO -   VMS: 491.5 MB
+18:12:58 - INFO -   Percent: 3.1%
+18:15:09 - INFO - Memory changes during cleanup:
+18:15:09 - INFO - D:\Anaconda\Lib\tracemalloc.py:560: size=88 B (+88 B), count=2 (+2), average=44 B
+18:15:09 - INFO - D:\Anaconda\Lib\tracemalloc.py:423: size=80 B (+80 B), count=2 (+2), average=40 B
+18:15:09 - INFO - C:\Users\user\Desktop\Labels-Local\app.py:781: size=72 B (+72 B), count=2 (+2), average=36 B
+18:15:09 - INFO - Memory after cleanup:
+18:15:09 - INFO -   RSS: 533.6 MB
+18:15:09 - INFO -   VMS: 519.9 MB
+18:15:09 - INFO -   Percent: 3.3%

@@ -1,0 +1,23 @@
+18:51:24 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+18:51:25 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+18:51:24 - INFO - Application starting with enhanced logging
+18:54:10 - INFO - Memory changes during cleanup:
+18:54:10 - INFO - <frozen genericpath>:42: size=0 B (-200 B), count=0 (-4)
+18:54:10 - INFO - D:\Anaconda\Lib\tracemalloc.py:558: size=216 B (+160 B), count=4 (+3), average=54 B
+18:54:10 - INFO - D:\Anaconda\Lib\tracemalloc.py:560: size=136 B (+136 B), count=2 (+2), average=68 B
+18:54:10 - INFO - Memory after cleanup:
+18:54:10 - INFO -   RSS: 963.3 MB
+18:54:10 - INFO -   VMS: 949.7 MB
+18:54:10 - INFO -   Percent: 5.9%
+18:54:12 - INFO - Memory changes during cleanup:
+18:54:12 - INFO - <frozen genericpath>:42: size=0 B (-200 B), count=0 (-4)
+18:54:12 - INFO - D:\Anaconda\Lib\tracemalloc.py:558: size=216 B (+160 B), count=4 (+3), average=54 B
+18:54:12 - INFO - <frozen ntpath>:145: size=0 B (-112 B), count=0 (-1)
+18:54:10 - INFO - Memory changes during cleanup:
+18:54:10 - INFO - D:\Anaconda\Lib\tracemalloc.py:115: size=0 B (-76.4 KiB), count=0 (-978)
+18:54:10 - INFO - D:\Anaconda\Lib\ctypes\__init__.py:64: size=62.6 KiB (+62.6 KiB), count=2 (+2), average=31.3 KiB
+18:54:10 - INFO - D:\Anaconda\Lib\tracemalloc.py:193: size=0 B (-44.3 KiB), count=0 (-945)
+18:54:14 - INFO - Memory changes during cleanup:
+18:54:14 - INFO - D:\Anaconda\Lib\tracemalloc.py:115: size=0 B (-74.7 KiB), count=0 (-956)
+18:54:14 - INFO - D:\Anaconda\Lib\tracemalloc.py:193: size=0 B (-43.3 KiB), count=0 (-924)
+18:54:14 - INFO - D:\Anaconda\Lib\tracemalloc.py:558: size=8776 B (+2944 B), count=182 (+61), average=48 B

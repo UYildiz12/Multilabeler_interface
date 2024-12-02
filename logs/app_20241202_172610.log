@@ -1,0 +1,28 @@
+17:29:10 - INFO - Application starting with enhanced logging
+17:29:10 - INFO - Memory before creating labeler: 441.9 MB
+17:29:10 - INFO - Memory after creating labeler: 441.9 MB
+17:30:29 - INFO - Memory changes during cleanup:
+17:30:29 - INFO - D:\Anaconda\Lib\tracemalloc.py:115: size=0 B (-156 KiB), count=0 (-1999)
+17:30:29 - INFO - D:\Anaconda\Lib\tracemalloc.py:558: size=552 B (+384 B), count=10 (+7), average=55 B
+17:30:29 - INFO - D:\Anaconda\Lib\logging\__init__.py:2148: size=0 B (-176 B), count=0 (-3)
+17:30:29 - INFO - Memory after cleanup: 473.0 MB
+17:30:44 - INFO - Memory changes during cleanup:
+17:30:44 - INFO - <frozen genericpath>:42: size=0 B (-200 B), count=0 (-4)
+17:30:44 - INFO - D:\Anaconda\Lib\tracemalloc.py:558: size=216 B (+160 B), count=4 (+3), average=54 B
+17:30:44 - INFO - <frozen ntpath>:145: size=0 B (-112 B), count=0 (-1)
+17:30:54 - INFO - Memory changes during cleanup:
+17:30:54 - INFO - D:\Anaconda\Lib\tracemalloc.py:115: size=0 B (-156 KiB), count=0 (-1998)
+17:30:54 - INFO - D:\Anaconda\Lib\ctypes\__init__.py:64: size=62.6 KiB (+62.6 KiB), count=2 (+2), average=31.3 KiB
+17:30:54 - INFO - D:\Anaconda\Lib\copy.py:280: size=7168 B (-752 B), count=112 (-12), average=64 B
+17:30:57 - INFO - Memory changes during cleanup:
+17:30:57 - INFO - D:\Anaconda\Lib\tracemalloc.py:115: size=0 B (-156 KiB), count=0 (-1998)
+17:30:57 - INFO - D:\Anaconda\Lib\ctypes\__init__.py:64: size=62.6 KiB (+62.6 KiB), count=2 (+2), average=31.3 KiB
+17:30:57 - INFO - D:\Anaconda\Lib\site-packages\watchdog\observers\winapi.py:280: size=0 B (-1344 B), count=0 (-24)
+17:30:59 - INFO - Memory changes during cleanup:
+17:30:59 - INFO - D:\Anaconda\Lib\tracemalloc.py:558: size=1424 B (+1368 B), count=26 (+25), average=55 B
+17:30:59 - INFO - D:\Anaconda\Lib\email\message.py:511: size=0 B (-1008 B), count=0 (-18)
+17:30:59 - INFO - D:\Anaconda\Lib\weakref.py:590: size=0 B (-128 B), count=0 (-2)
+17:31:04 - INFO - Memory changes during cleanup:
+17:31:04 - INFO - D:\Anaconda\Lib\tracemalloc.py:115: size=0 B (-156 KiB), count=0 (-1999)
+17:31:04 - INFO - D:\Anaconda\Lib\ctypes\__init__.py:64: size=62.6 KiB (+62.6 KiB), count=2 (+2), average=31.3 KiB
+17:31:04 - INFO - D:\Anaconda\Lib\copy.py:280: size=3968 B (-496 B), count=62 (-8), average=64 B

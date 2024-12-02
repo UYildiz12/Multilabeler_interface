@@ -1,0 +1,8 @@
+18:38:04 - INFO - Memory changes during cleanup:
+18:38:04 - INFO - D:\Anaconda\Lib\tracemalloc.py:67: size=0 B (-125 KiB), count=0 (-1998)
+18:38:04 - INFO - D:\Anaconda\Lib\ctypes\__init__.py:64: size=62.6 KiB (+62.6 KiB), count=2 (+2), average=31.3 KiB
+18:38:04 - INFO - D:\Anaconda\Lib\logging\__init__.py:1213: size=67 B (-448 B), count=1 (-5), average=67 B
+18:38:04 - INFO - Memory after cleanup:
+18:38:04 - INFO -   RSS: 1285.9 MB
+18:38:04 - INFO -   VMS: 1267.1 MB
+18:38:04 - INFO -   Percent: 7.9%

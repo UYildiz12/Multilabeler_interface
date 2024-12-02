@@ -1,0 +1,9 @@
+17:52:19 - INFO - Memory changes during cleanup:
+17:52:19 - INFO - D:\Anaconda\Lib\tracemalloc.py:560: size=288 B (+288 B), count=2 (+2), average=144 B
+17:52:19 - INFO - D:\Anaconda\Lib\tracemalloc.py:423: size=288 B (+288 B), count=2 (+2), average=144 B
+17:52:19 - INFO - C:\Users\user\Desktop\Labels-Local\app.py:755: size=72 B (+72 B), count=2 (+2), average=36 B
+17:52:42 - INFO - Memory changes during cleanup:
+17:52:42 - INFO - D:\Anaconda\Lib\tracemalloc.py:115: size=0 B (-156 KiB), count=0 (-1998)
+17:52:42 - INFO - D:\Anaconda\Lib\ctypes\__init__.py:64: size=62.6 KiB (+62.6 KiB), count=2 (+2), average=31.3 KiB
+17:52:42 - INFO - D:\Anaconda\Lib\copy.py:280: size=3328 B (-624 B), count=52 (-10), average=64 B
+17:52:42 - INFO - Memory after cleanup: 434.4 MB

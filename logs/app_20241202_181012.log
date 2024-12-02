@@ -1,0 +1,9 @@
+18:12:39 - INFO - Cache cleanup: removed 0 items, memory change: 0.00 MB
+18:13:30 - INFO - Memory changes during image rendering:
+18:13:30 - INFO - D:\Anaconda\Lib\site-packages\streamlit\elements\image.py:279: size=84.6 KiB (+84.6 KiB), count=1 (+1), average=84.6 KiB
+18:13:30 - INFO - D:\Anaconda\Lib\site-packages\matplotlib\cbook\__init__.py:714: size=64.1 KiB (+64.1 KiB), count=2 (+2), average=32.0 KiB
+18:13:30 - INFO - D:\Anaconda\Lib\site-packages\matplotlib\transforms.py:209: size=53.7 KiB (+53.7 KiB), count=706 (+705), average=78 B
+18:15:53 - INFO - Memory changes during cleanup:
+18:15:53 - INFO - D:\Anaconda\Lib\tracemalloc.py:67: size=0 B (-125 KiB), count=0 (-1998)
+18:15:53 - INFO - D:\Anaconda\Lib\ctypes\__init__.py:64: size=62.6 KiB (+62.6 KiB), count=2 (+2), average=31.3 KiB
+18:15:53 - INFO - D:\Anaconda\Lib\copy.py:280: size=103 KiB (-1008 B), count=1652 (-16), average=64 B

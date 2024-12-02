@@ -1,0 +1,13 @@
+18:12:52 - INFO - Application starting with enhanced logging
+18:12:52 - INFO - Memory before creating labeler:
+18:12:52 - INFO -   RSS: 505.3 MB
+18:12:52 - INFO -   VMS: 491.3 MB
+18:12:52 - INFO -   Percent: 3.1%
+18:15:25 - INFO - Memory changes during cleanup:
+18:15:25 - INFO - D:\Anaconda\Lib\tracemalloc.py:115: size=0 B (-156 KiB), count=0 (-1998)
+18:15:25 - INFO - D:\Anaconda\Lib\tracemalloc.py:558: size=94.0 KiB (+93.9 KiB), count=2004 (+2002), average=48 B
+18:15:25 - INFO - D:\Anaconda\Lib\tracemalloc.py:193: size=0 B (-93.5 KiB), count=0 (-1995)
+18:15:25 - INFO - Memory after cleanup:
+18:15:25 - INFO -   RSS: 535.8 MB
+18:15:25 - INFO -   VMS: 522.1 MB
+18:15:25 - INFO -   Percent: 3.3%

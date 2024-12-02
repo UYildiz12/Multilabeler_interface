@@ -1,0 +1,5 @@
+18:49:20 - INFO - Top 10 memory allocations:
+18:49:31 - INFO - Memory changes during cleanup:
+18:49:31 - INFO - D:\Anaconda\Lib\tracemalloc.py:115: size=0 B (-80.5 KiB), count=0 (-1031)
+18:49:31 - INFO - D:\Anaconda\Lib\ctypes\__init__.py:64: size=62.6 KiB (+62.6 KiB), count=2 (+2), average=31.3 KiB
+18:49:31 - INFO - D:\Anaconda\Lib\tracemalloc.py:193: size=0 B (-46.7 KiB), count=0 (-996)

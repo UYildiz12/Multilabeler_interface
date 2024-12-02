@@ -1,0 +1,31 @@
+17:49:08 - INFO - Memory after cleanup: 1.9%
+17:49:15 - INFO - Application starting with enhanced logging
+17:49:15 - INFO - Memory before creating labeler: 350.1 MB
+17:49:15 - INFO - Memory after creating labeler: 350.1 MB
+17:49:38 - INFO - Memory changes during image rendering:
+17:49:38 - INFO - <frozen importlib._bootstrap_external>:729: size=19.0 MiB (+378 KiB), count=125225 (+2968), average=159 B
+17:49:38 - INFO - D:\Anaconda\Lib\site-packages\streamlit\elements\image.py:279: size=115 KiB (+115 KiB), count=1 (+1), average=115 KiB
+17:49:38 - INFO - D:\Anaconda\Lib\site-packages\matplotlib\cbook\__init__.py:714: size=64.1 KiB (+64.1 KiB), count=2 (+2), average=32.0 KiB
+17:52:29 - INFO - Memory changes during cleanup:
+17:52:29 - INFO - D:\Anaconda\Lib\tracemalloc.py:560: size=216 B (+216 B), count=2 (+2), average=108 B
+17:52:29 - INFO - D:\Anaconda\Lib\tracemalloc.py:423: size=216 B (+216 B), count=2 (+2), average=108 B
+17:52:29 - INFO - D:\Anaconda\Lib\site-packages\watchdog\observers\read_directory_changes.py:116: size=0 B (-208 B), count=0 (-2)
+17:52:29 - INFO - Memory after cleanup: 437.5 MB
+17:52:31 - INFO - Memory changes during cleanup:
+17:52:31 - INFO - D:\Anaconda\Lib\tracemalloc.py:115: size=0 B (-156 KiB), count=0 (-1998)
+17:52:31 - INFO - D:\Anaconda\Lib\ctypes\__init__.py:64: size=62.6 KiB (+62.6 KiB), count=2 (+2), average=31.3 KiB
+17:52:31 - INFO - D:\Anaconda\Lib\logging\__init__.py:1213: size=335 B (-448 B), count=5 (-5), average=67 B
+17:52:34 - INFO - Memory changes during cleanup:
+17:52:34 - INFO - D:\Anaconda\Lib\tracemalloc.py:115: size=0 B (-156 KiB), count=0 (-1998)
+17:52:34 - INFO - D:\Anaconda\Lib\ctypes\__init__.py:64: size=62.6 KiB (+62.6 KiB), count=2 (+2), average=31.3 KiB
+17:52:34 - INFO - D:\Anaconda\Lib\logging\__init__.py:1213: size=402 B (-448 B), count=6 (-5), average=67 B
+17:52:37 - INFO - Memory changes during cleanup:
+17:52:37 - INFO - D:\Anaconda\Lib\tracemalloc.py:115: size=0 B (-156 KiB), count=0 (-1998)
+17:52:37 - INFO - D:\Anaconda\Lib\ctypes\__init__.py:64: size=62.6 KiB (+62.6 KiB), count=2 (+2), average=31.3 KiB
+17:52:37 - INFO - D:\Anaconda\Lib\copy.py:280: size=4160 B (-1328 B), count=65 (-21), average=64 B
+17:52:37 - INFO - Memory after cleanup: 437.4 MB
+17:52:48 - INFO - Memory changes during cleanup:
+17:52:48 - INFO - D:\Anaconda\Lib\tracemalloc.py:115: size=0 B (-156 KiB), count=0 (-1999)
+17:52:48 - INFO - D:\Anaconda\Lib\logging\__init__.py:1213: size=737 B (-448 B), count=11 (-5), average=67 B
+17:52:48 - INFO - D:\Anaconda\Lib\copy.py:280: size=2496 B (-368 B), count=39 (-6), average=64 B
+17:52:48 - INFO - Memory after cleanup: 434.0 MB
