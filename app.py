@@ -636,22 +636,36 @@ class StreamlitImageLabeler:
 
     def export_labels(self):
         try:
+            # Prepare the data to be exported
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             export_data = {
                 "user_id": st.session_state.user_id,
                 "timestamp": datetime.now().isoformat(),
                 "categories": {
-                    cat: labels for cat, labels in st.session_state.labels.items()
+                    cat: labels
+                    for cat, labels in st.session_state.labels.items()
                     if cat in st.session_state.category_progress
                 }
             }
+    
+            # Convert export data to JSON string (instead of writing to local file)
+            json_str = json.dumps(export_data, indent=2)
             
+            # Suggest a file name for the download
             filename = f"labels_export_{timestamp}.json"
-            with open(filename, 'w') as f:
-                json.dump(export_data, f, indent=2)
-            st.sidebar.success(f"Labels exported to {filename}")
+    
+            # Use Streamlit's built-in download_button on the sidebar
+            st.sidebar.download_button(
+                label="Download Labels as JSON",
+                data=json_str,
+                file_name=filename,
+                mime="application/json"
+            )
+    
+            st.sidebar.success("Your labels are ready to download!")
         except Exception as e:
             st.sidebar.error(f"Error exporting labels: {str(e)}")
+
 
     def reset_labels(self):
         logging.debug("Starting reset_labels process")
